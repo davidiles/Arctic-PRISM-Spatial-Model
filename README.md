@@ -18,6 +18,8 @@ Currently using [Zero-Adjusted Poisson models](https://inlabru-org.github.io/inl
 
 Simulated surface, sample data, and fitted density surface for SESA:
 
+![SESA simulation](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/Semipalmated%20Sandpiper.png)
+ 
 
 
    *Note: Also eventually analyze the same data using design-based analysis* 
