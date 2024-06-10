@@ -14,7 +14,7 @@ Currently using [Zero-Adjusted Poisson models](https://inlabru-org.github.io/inl
 
 - Analyze simulated data using model.  
 
-- *Note: Also eventually analyze the same data using design-based analysis* 
+|   - *Note: Also eventually analyze the same data using design-based analysis* 
 
 
 
@@ -27,5 +27,5 @@ Currently using [Zero-Adjusted Poisson models](https://inlabru-org.github.io/inl
 3) Consider implementing [barrier models] (https://haakonbakkagit.github.io/btopic128.html)
 
 4) Need to get design-based analysis working to compare bias/precision to model-based estimates.  Even if model-based estimates aren't perfect, they may be better than design-based ones.  
--  Adapt Brandon Edwards' code.
--  Contact Jon Bart.
+|   - Adapt Brandon Edwards' code.
+|   - Contact Jon Bart.
