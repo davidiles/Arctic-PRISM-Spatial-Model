@@ -24,7 +24,7 @@ Currently using [Zero-Adjusted Poisson models](https://inlabru-org.github.io/inl
 
 2) Covariates need to be refined (currently using land cover of canada 2020)
 
-3) Consider implementing [barrier models] (https://haakonbakkagit.github.io/btopic128.html)
+3) Consider implementing [barrier models](https://haakonbakkagit.github.io/btopic128.html)
 
 4) Need to get design-based analysis working to compare bias/precision to model-based estimates.  Even if model-based estimates aren't perfect, they may be better than design-based ones.  
    - Adapt Brandon Edwards' code.
