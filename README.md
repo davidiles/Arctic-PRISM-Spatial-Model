@@ -14,6 +14,12 @@ Currently using [Zero-Adjusted Poisson models](https://inlabru-org.github.io/inl
 
 - Analyze simulated data using model.  
 
+#### Example results below
+
+Simulated surface, sample data, and fitted density surface for SESA:
+
+
+
    *Note: Also eventually analyze the same data using design-based analysis* 
 
 

@@ -337,8 +337,8 @@ sr_for_mesh <- st_union(study_region) %>% st_buffer(100)
 # For spatial analysis in INLA
 mesh_spatial <- fm_mesh_2d_inla(
   boundary = sr_for_mesh, 
-  max.edge = c(20, 500), # km inside and outside # 100
-  cutoff = 20, # 100
+  max.edge = c(50, 500), # km inside and outside
+  cutoff = 50,
   crs = st_crs(arctic_proj)
 )
 
@@ -764,17 +764,18 @@ for (i in 1:nrow(species_to_run)){
     geom_point(aes(y = species_number, x = sum_true), fill = "white", size = 4, pch = 23)+
     geom_point(aes(y = species_number, x = sum_true), fill = "black", size = 2, pch = 23)+
     
-    scale_x_continuous(trans = "log10")+
+    scale_x_continuous(trans = "log10", name = "Estimate (sum of pixels)")+
     scale_y_continuous(labels = results$common_name, name = "", breaks = 1:nrow(results))+
     
     theme_bw()+
     theme(panel.grid.minor = element_blank(),
-          panel.grid.major.y = element_blank())
+          panel.grid.major.y = element_blank())+
+    ggtitle("True vs estimated population sizes")
   
   print(result_plot)
   
 }
 
-png("../output/species_estimates.png", height=8, width=4, units="in", res = 600)
+png("../output/species_estimates.png", height=6, width=8, units="in", res = 600)
 print(result_plot)
 dev.off()
