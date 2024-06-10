@@ -18,6 +18,7 @@ library(factoextra)
 library(viridis)
 library(stars)
 library(ggpubr)
+library(scales)
 
 rm(list=ls())
 
@@ -336,8 +337,8 @@ sr_for_mesh <- st_union(study_region) %>% st_buffer(100)
 # For spatial analysis in INLA
 mesh_spatial <- fm_mesh_2d_inla(
   boundary = sr_for_mesh, 
-  max.edge = c(100, 500), # km inside and outside
-  cutoff = 100, 
+  max.edge = c(20, 500), # km inside and outside # 100
+  cutoff = 20, # 100
   crs = st_crs(arctic_proj)
 )
 
@@ -385,11 +386,6 @@ for (i in 1:nrow(species_to_run)){
   
   species <- species_to_run[i,]
   
-  if (species$common_name %in% results$common_name){
-    species_to_run <- subset(species_to_run, !(common_name %in% results$common_name))
-    next
-  }
-  
   ebirdst_download_status(species$species_code,pattern = "_mean_9km_")
   
   # Raster used as template
@@ -411,11 +407,14 @@ for (i in 1:nrow(species_to_run)){
   values(ebirdSDM) <- values(ebirdSDM) * 5
   #values(ebirdSDM) <- values(ebirdSDM)*0 + 1
   ebirdSDM_sf <- as.points(ebirdSDM) %>% st_as_sf() 
-  
+
   # -----------------------------------------------------
   # Plot species distribution
   # -----------------------------------------------------
-  lim <- c(0,max(values(ebirdSDM),na.rm = TRUE)*1.5) %>% round()
+  vals <- na.omit(values(ebirdSDM)) %>% as.numeric()
+  max <- max(vals)
+  min <- min(vals[vals>0])
+  lim <- c(min,max*1.5) 
   
   map2 <- ggplot()+
     
@@ -440,7 +439,9 @@ for (i in 1:nrow(species_to_run)){
     theme(panel.grid.major = element_blank(), 
           panel.grid.minor = element_blank(),
           panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
-    scale_fill_gradient(low = 'white', high = 'darkred', na.value=NA, limits = lim)+
+    scale_fill_gradient(low = 'white', high = 'darkred', na.value=NA, 
+                        limits = lim, 
+                        label = comma)+
     ggtitle(paste0(species$common_name," - simulated density surface"))
   
   map2
@@ -453,7 +454,7 @@ for (i in 1:nrow(species_to_run)){
   surveys$count <- rpois(length(surveys$count),surveys$count)
   
   # Ensure the species is abundant enough to fit model
-  if (sum(surveys$count>0, na.rm = TRUE) < 100){
+  if (sum(surveys$count>0, na.rm = TRUE) < 200){
     next
   }
   
@@ -485,7 +486,7 @@ for (i in 1:nrow(species_to_run)){
     theme(panel.grid.major = element_blank(), 
           panel.grid.minor = element_blank(),
           panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
-    scale_color_gradient(low = 'pink', high = 'darkred', na.value=NA, limits = lim)+
+    scale_color_gradient(low = 'white', high = 'darkred', na.value=NA, limits = lim)+
     ggtitle(paste0(species$common_name," - simulated detections"))
   
   simcount_map
@@ -495,7 +496,7 @@ for (i in 1:nrow(species_to_run)){
   # --------------------------------
   
   # Controls the 'residual spatial field'.  This can be adjusted to create smoother surfaces.
-  prior_range <- c(250, 0.99)        # 1% chance range is smaller than 1000km
+  prior_range <- c(100, 0.99)        # 99% chance range is smaller than 100km
   prior_sigma <- c(0.1,0.01)         # 1% chance sd is larger than 0.1
   matern_count <- inla.spde2.pcmatern(mesh_spatial,
                                       prior.range = prior_range, 
@@ -504,7 +505,7 @@ for (i in 1:nrow(species_to_run)){
   )
   
   # Controls the 'residual spatial field'.  This can be adjusted to create smoother surfaces.
-  prior_range <- c(1000, 0.01)     # 1% chance range is smaller than 1000km
+  prior_range <- c(1000, 0.01)       # 1% chance range is smaller than 1000km
   prior_sigma <- c(0.1,0.01)         # 1% chance sd is larger than 1
   matern_present <- inla.spde2.pcmatern(mesh_spatial,
                                         prior.range = prior_range, 
@@ -619,7 +620,9 @@ for (i in 1:nrow(species_to_run)){
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
-    scale_fill_gradient(low = 'white', high = 'darkred', na.value=NA, limits = lim)+
+    scale_fill_gradient(low = 'white', high = 'darkred', na.value=NA, 
+                        limits = lim, 
+                        label = comma)+
     ggtitle("Estimated density surface")
   
   map3
@@ -771,3 +774,7 @@ for (i in 1:nrow(species_to_run)){
   print(result_plot)
   
 }
+
+png("../output/species_estimates.png", height=8, width=4, units="in", res = 600)
+print(result_plot)
+dev.off()
