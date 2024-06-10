@@ -413,17 +413,15 @@ for (i in 1:nrow(species_to_run)){
   ebirdSDM_sf <- as.points(ebirdSDM) %>% st_as_sf() 
   
   # -----------------------------------------------------
-  # Plot species distribution, overlaid with true species distribution
+  # Plot species distribution
   # -----------------------------------------------------
+  lim <- c(0,max(values(ebirdSDM),na.rm = TRUE)*1.5) %>% round()
   
   map2 <- ggplot()+
     
     geom_spatraster(data = ebirdSDM) +
-    geom_sf(data=study_region,colour="gray80", fill = "transparent")+
-    #geom_sf(data=surveys,size = 0.1)+
-    
-    #coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
-    
+    geom_sf(data=study_region,colour="gray95", fill = "transparent")+
+
     annotation_scale(style = "ticks",
                      text_face = "bold")+
     
@@ -442,7 +440,7 @@ for (i in 1:nrow(species_to_run)){
     theme(panel.grid.major = element_blank(), 
           panel.grid.minor = element_blank(),
           panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
-    scale_fill_gradient(low = 'white', high = 'blue', na.value=NA)+
+    scale_fill_gradient(low = 'white', high = 'darkred', na.value=NA, limits = lim)+
     ggtitle(paste0(species$common_name," - simulated density surface"))
   
   map2
@@ -462,10 +460,10 @@ for (i in 1:nrow(species_to_run)){
   simcount_map <- ggplot()+
     
     
-    geom_sf(data=study_region,colour="gray80", fill = "transparent")+
+    geom_sf(data=study_region,colour="gray95", fill = "transparent")+
     
-    geom_sf(data=surveys,col = "gray")+
-    geom_sf(data=subset(surveys, count > 0),aes(size = count))+
+    #geom_sf(data=surveys,col = "gray80", pch = 4, size = 0.5)+
+    geom_sf(data=subset(surveys, count > 0),aes(col = count), size = 0.2)+
     
     #coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
     
@@ -487,8 +485,8 @@ for (i in 1:nrow(species_to_run)){
     theme(panel.grid.major = element_blank(), 
           panel.grid.minor = element_blank(),
           panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
-    scale_fill_gradient(low = 'white', high = 'blue', na.value=NA)+
-    ggtitle(paste0(species$common_name," - simulated density surface"))
+    scale_color_gradient(low = 'pink', high = 'darkred', na.value=NA, limits = lim)+
+    ggtitle(paste0(species$common_name," - simulated detections"))
   
   simcount_map
   
@@ -497,7 +495,7 @@ for (i in 1:nrow(species_to_run)){
   # --------------------------------
   
   # Controls the 'residual spatial field'.  This can be adjusted to create smoother surfaces.
-  prior_range <- c(250, 0.99)       # 1% chance range is smaller than 1000km
+  prior_range <- c(250, 0.99)        # 1% chance range is smaller than 1000km
   prior_sigma <- c(0.1,0.01)         # 1% chance sd is larger than 0.1
   matern_count <- inla.spde2.pcmatern(mesh_spatial,
                                       prior.range = prior_range, 
@@ -506,21 +504,22 @@ for (i in 1:nrow(species_to_run)){
   )
   
   # Controls the 'residual spatial field'.  This can be adjusted to create smoother surfaces.
-  prior_range <- c(1000, 0.01)        # 1% chance range is smaller than 1000km
-  prior_sigma <- c(1,0.5)          # 50% chance sd is larger than 1
+  prior_range <- c(1000, 0.01)     # 1% chance range is smaller than 1000km
+  prior_sigma <- c(0.1,0.01)         # 1% chance sd is larger than 1
   matern_present <- inla.spde2.pcmatern(mesh_spatial,
                                         prior.range = prior_range, 
                                         prior.sigma = prior_sigma,
                                         constr = TRUE
   )
+  
   comps <- ~
     Intercept_count(1) +
     spde_count(geometry, model = matern_count) +
     
     Intercept_present(1) +
-    spde_present(geometry, model = matern_present)# +
-    #count_PC2(PC2, model = "linear")+
-    #present_PC2(PC2, model = "linear")
+    spde_present(geometry, model = matern_present) +
+    count_PC2(PC2, model = "linear",prec.linear=100)+
+    present_PC2(PC2, model = "linear",prec.linear=100)
     
   
   surveys$present <- as.numeric(surveys$count>0)
@@ -530,7 +529,7 @@ for (i in 1:nrow(species_to_run)){
       like(
         family = "zeroinflatedpoisson0",
         data = subset(surveys,present==1),
-        formula = count ~ Intercept_count + spde_count ,
+        formula = count ~ Intercept_count + spde_count + count_PC2,
         control.family = list(hyper = list(theta = list(
           initial = -20, fixed = TRUE
         )))
@@ -539,14 +538,14 @@ for (i in 1:nrow(species_to_run)){
       like(
         family = "nzpoisson",
         data = subset(surveys,present==1),
-        formula = count ~ Intercept_count + spde_count  
+        formula = count ~ Intercept_count + spde_count + count_PC2   
       )
     }
   
   present_like <- like(
     family = "binomial",
     data = surveys,
-    formula = present ~ Intercept_present + spde_present
+    formula = present ~ Intercept_present + spde_present + present_PC2
   )
   
   fit_zap <- bru(
@@ -569,8 +568,8 @@ for (i in 1:nrow(species_to_run)){
     fit_zap,
     pred_df,
     ~ {
-      presence_prob <- plogis(Intercept_present + spde_present)
-      lambda <- exp(Intercept_count + spde_count)
+      presence_prob <- plogis(Intercept_present + spde_present + present_PC2)
+      lambda <- exp(Intercept_count + spde_count + count_PC2)
       expect_param <- presence_prob * lambda
       expect <- expect_param / (1 - exp(-lambda))
       
@@ -595,10 +594,11 @@ for (i in 1:nrow(species_to_run)){
   pred_df$flag <- apply(pred,1,function(x) sum(x>100)>0)
   
   rast_to_plot <- rast(pred_df[,c("X","Y","pred_mean")], type="xyz", crs = arctic_proj)
+  values(rast_to_plot)[which(values(rast_to_plot)>max(lim))] <- max(lim)
   map3 <- ggplot() +
     
     geom_spatraster(data = rast_to_plot)+
-    geom_sf(data=study_region,colour="gray80", fill = "transparent")+
+    geom_sf(data=study_region,colour="gray95", fill = "transparent")+
     coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
     
     annotation_scale(style = "ticks",
@@ -619,8 +619,8 @@ for (i in 1:nrow(species_to_run)){
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
-    scale_fill_gradient(low = 'white', high = 'blue', na.value=NA, limits = c(0,max(values(rast_to_plot))))+
-    ggtitle("Estimated density")
+    scale_fill_gradient(low = 'white', high = 'darkred', na.value=NA, limits = lim)+
+    ggtitle("Estimated density surface")
   
   map3
   
@@ -692,8 +692,12 @@ for (i in 1:nrow(species_to_run)){
   # Plot
   # -----------------------------------------------------
   
-  species_maps <- plot_grid(map2, map3, nrow = 1, align = "hv")
+  species_maps <- plot_grid(map2, simcount_map,map3, nrow = 3, align = "hv")
   maps[[species$common_name]] <- species_maps
+  
+  png(paste0("../output/",species$common_name,".png"), height=8, width=4, units="in", res = 600)
+  print(species_maps)
+  dev.off()
   
   # --------------------------------
   # Design-based analysis
