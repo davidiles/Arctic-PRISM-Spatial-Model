@@ -3,8 +3,6 @@
 *.Rdata
 *.rds
 *.RDS
-*.png
 *.csv
 manuscript/
 data/
-output/
