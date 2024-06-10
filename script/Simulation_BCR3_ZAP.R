@@ -148,6 +148,10 @@ map1 <- ggplot()+
 
 map1
 
+png("../output/PRISM_survey_locations.png", height=4, width=6, units="in", res = 600)
+print(map1)
+dev.off()
+
 # -----------------------------------------------------
 # Load spatial covariates
 # -----------------------------------------------------
@@ -377,7 +381,7 @@ species_to_run <- subset(ebirdst_runs, common_name %in% c("Black-bellied Plover"
 results <- data.frame()
 maps <- list()
 
-for (i in 2:nrow(species_to_run)){
+for (i in 1:nrow(species_to_run)){
   
   species <- species_to_run[i,]
   
@@ -461,7 +465,7 @@ for (i in 2:nrow(species_to_run)){
     geom_sf(data=study_region,colour="gray80", fill = "transparent")+
     
     geom_sf(data=surveys,col = "gray")+
-    geom_sf(data=subset(surveys, count > 0),aes(size = count, col = BCR_PROV))+
+    geom_sf(data=subset(surveys, count > 0),aes(size = count))+
     
     #coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
     
@@ -503,7 +507,7 @@ for (i in 2:nrow(species_to_run)){
   
   # Controls the 'residual spatial field'.  This can be adjusted to create smoother surfaces.
   prior_range <- c(1000, 0.01)        # 1% chance range is smaller than 1000km
-  prior_sigma <- c(0.1,0.01)          # 1% chance sd is larger than 0.1
+  prior_sigma <- c(1,0.5)          # 50% chance sd is larger than 1
   matern_present <- inla.spde2.pcmatern(mesh_spatial,
                                         prior.range = prior_range, 
                                         prior.sigma = prior_sigma,
@@ -514,9 +518,9 @@ for (i in 2:nrow(species_to_run)){
     spde_count(geometry, model = matern_count) +
     
     Intercept_present(1) +
-    spde_present(geometry, model = matern_present) +
-    count_PC2(PC2, model = "linear")+
-    present_PC2(PC2, model = "linear")
+    spde_present(geometry, model = matern_present)# +
+    #count_PC2(PC2, model = "linear")+
+    #present_PC2(PC2, model = "linear")
     
   
   surveys$present <- as.numeric(surveys$count>0)
@@ -526,7 +530,7 @@ for (i in 2:nrow(species_to_run)){
       like(
         family = "zeroinflatedpoisson0",
         data = subset(surveys,present==1),
-        formula = count ~ Intercept_count + spde_count + count_PC2,
+        formula = count ~ Intercept_count + spde_count ,
         control.family = list(hyper = list(theta = list(
           initial = -20, fixed = TRUE
         )))
@@ -535,14 +539,14 @@ for (i in 2:nrow(species_to_run)){
       like(
         family = "nzpoisson",
         data = subset(surveys,present==1),
-        formula = count ~ Intercept_count + spde_count  + count_PC2
+        formula = count ~ Intercept_count + spde_count  
       )
     }
   
   present_like <- like(
     family = "binomial",
     data = surveys,
-    formula = present ~ Intercept_present + spde_present  + present_PC2
+    formula = present ~ Intercept_present + spde_present
   )
   
   fit_zap <- bru(
@@ -565,8 +569,8 @@ for (i in 2:nrow(species_to_run)){
     fit_zap,
     pred_df,
     ~ {
-      presence_prob <- plogis(Intercept_present + spde_present  + present_PC2)
-      lambda <- exp(Intercept_count + spde_count + count_PC2)
+      presence_prob <- plogis(Intercept_present + spde_present)
+      lambda <- exp(Intercept_count + spde_count)
       expect_param <- presence_prob * lambda
       expect <- expect_param / (1 - exp(-lambda))
       
