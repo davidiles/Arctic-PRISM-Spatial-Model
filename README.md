@@ -21,14 +21,21 @@ Simulated surface, sample data, and fitted density surface for SESA:
 ![SESA simulation](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/Semipalmated%20Sandpiper.png)
  
 
+The resulting species distribution raster looks pretty good. Other species are shown in the [output folder](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/tree/main/output) .
 
-   *Note: Also eventually analyze the same data using design-based analysis* 
+To evaluate how well the model performs for estimating abundance over the entire species arctic range, sum up the estimates and compare to the "true" sum.  Results are shown for several species below.
 
+The model seems to overestimate abundance when there are large portions of the landscape that are unsuitable (true abundance = 0). This is probably because the model cannot estimate an abundance of exactly zero (or negative), and any uncertainty will only add positive values.
+
+![Population estimates](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/species_estimates.png)
+ 
+
+*Note: Also eventually analyze the same data using design-based analysis* 
 
 
 ## Issues
 
-1) The model seems to overestimate abundance when there are large portions of the landscape that are unsuitable (true abundance = 0). This is probably because the model cannot estimate an abundance of exactly zero (or negative), and any uncertainty will only add positive values.
+1) Explore "overestimation" issue in more detail.  Can this be overcome with priors?
 
 2) Covariates need to be refined (currently using land cover of canada 2020)
 
