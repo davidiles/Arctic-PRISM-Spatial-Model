@@ -16,6 +16,8 @@ library(viridis)
 library(stars)
 library(ggpubr)
 library(scales)
+library(INLAspacetime)
+library(patchwork)
 
 rm(list=ls())
 
@@ -319,7 +321,6 @@ setwd("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spa
 # print(covar_plots)
 # dev.off()
 #
-
 # # -----------------------------------------------------
 # # Conduct simulations
 # # -----------------------------------------------------
@@ -331,21 +332,6 @@ setwd("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spa
 # # -----------------------------------------------------
 # # Conduct simulations
 # # -----------------------------------------------------
-# 
-# sr_for_mesh <- st_union(study_region) %>% st_buffer(100)
-# 
-# # For spatial analysis in INLA
-# mesh_spatial <- fm_mesh_2d_inla(
-#   boundary = sr_for_mesh,
-#   max.edge = c(50, 500), # km inside and outside
-#   cutoff = 50,
-#   crs = st_crs(arctic_proj)
-# )
-# 
-# mesh_locs <- mesh_spatial$loc[,c(1,2)] %>% as.data.frame()
-# dim(mesh_locs)
-# plot(mesh_spatial)
-# 
 # # Need to set access key (only once) before downloading ranges
 # #ebirdst::set_ebirdst_access_key()
 # #usethis::edit_r_environ()
@@ -353,6 +339,43 @@ setwd("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spa
 # # Save image so that steps above don't need to be re-run every time I change model
 # save.image("../output/PRISM_wksp.RData")
 load("../output/PRISM_wksp.RData")
+
+# ---------------------------
+# Create mesh and barrier feature (water)
+# Barrier example taken from: https://eliaskrainski.github.io/INLAspacetime/articles/web/barrierExample.html
+# ---------------------------
+study_region_outline <- st_union(study_region) %>% st_buffer(10) %>% st_buffer(-10)
+#sr_for_mesh <- st_union(study_region) %>% st_buffer(100)
+
+# For spatial analysis in INLA
+mesh_spatial <- fm_mesh_2d_inla(
+  boundary = sr_for_mesh,
+  max.edge = c(20, 200), # km inside and outside
+  cutoff = 20,
+  crs = st_crs(arctic_proj)
+)
+
+mesh_locs <- mesh_spatial$loc[,c(1,2)] %>% as.data.frame()
+dim(mesh_locs)
+plot(mesh_spatial)
+
+barriers <- st_difference(bbox %>% st_buffer(10000),st_union(study_region)) %>% st_buffer(-5)
+
+triBarrier <- unlist(fm_contains(
+  x = barriers, 
+  y = mesh_spatial, 
+  type = "centroid"))
+
+triCenters.xy <- cbind(
+  mesh_spatial$loc[mesh_spatial$graph$tv[,1], 1:2] +
+    mesh_spatial$loc[mesh_spatial$graph$tv[,2], 1:2] +
+    mesh_spatial$loc[mesh_spatial$graph$tv[,3], 1:2])/3
+
+ggplot() + theme_bw() +
+  gg(mesh_spatial) +
+  geom_point(aes(
+    x = triCenters.xy[triBarrier, 1],
+    y = triCenters.xy[triBarrier, 2])) 
 
 # ---------------------------
 # Strata for analysis
@@ -370,9 +393,10 @@ dummy_vars <- model.matrix(~ -1 + Ecozone, data = sampling_frame_sf) %>% as.data
 colnames(dummy_vars) <- paste0("stratum_",1:(ncol(dummy_vars)))
 sampling_frame_sf <- cbind(sampling_frame_sf,dummy_vars)
 
-ggplot()+geom_sf(data = ecoshapes, aes(fill = Ecozone))+scale_fill_manual(values = viridis(length(unique(ecoshapes$Ecozone))))
-
+ggplot()+ geom_sf(data = ecoshapes, aes(fill = Ecozone))+scale_fill_manual(values = viridis(length(unique(ecoshapes$Ecozone))))
 # ---------------------------
+
+
 set.seed(111)
 
 species_to_run <- subset(ebirdst_runs, common_name %in% 
@@ -401,16 +425,28 @@ species_to_run <- subset(ebirdst_runs, common_name %in%
                              "Stilt Sandpiper",
                              "Wilson's Snipe",
                              "Red-necked Phalarope",
-                             "Red Phalarope"))
+                             "Red Phalarope",
+                             
+                             "Canada Goose",
+                             "Snow Goose",
+                             "Horned Lark",
+                             "Lapland Longspur",
+                             "Willow Ptarmigan",
+                             "Long-tailed Jaeger",
+                             "Savannah Sparrow",
+                             "American Tree Sparrow"))
 
 results <- data.frame()
 maps <- list()
 
 for (i in 1:nrow(species_to_run)){
   
-  species <- species_to_run[i,]
+  if (file.exists("../output/results.RDS")) results <- readRDS("../output/results.RDS")
   
-  #ebirdst_download_status(species$species_code,pattern = "_mean_9km_")
+  species <- species_to_run[i,]
+  if (nrow(results) > 0 & species$common_name %in% results$common_name) next
+  
+  ebirdst_download_status(species$species_code,pattern = "_mean_9km_")
   
   # Raster used as template
   ebirdSDM <- load_raster(species$species_code, product = "abundance", 
@@ -446,7 +482,7 @@ for (i in 1:nrow(species_to_run)){
   map2 <- ggplot()+
     
     geom_spatraster(data = ebirdSDM) +
-    geom_sf(data=study_region,colour="gray95", fill = "transparent")+
+    geom_sf(data=study_region_outline,colour="gray80", fill = "transparent")+
     
     annotation_scale(style = "ticks",
                      text_face = "bold")+
@@ -469,7 +505,7 @@ for (i in 1:nrow(species_to_run)){
     scale_fill_gradient(low = 'white', high = 'darkred', na.value=NA, 
                         limits = lim, 
                         label = comma)+
-    ggtitle(paste0(species$common_name," - simulated density surface"))
+    ggtitle("Simulated surface")
   
   map2
   
@@ -485,11 +521,11 @@ for (i in 1:nrow(species_to_run)){
     next
   }
   
-  simcount_map <- ggplot()+
+  survey_map <- ggplot()+
     
-    geom_sf(data=study_region,colour="gray95", fill = "transparent")+
-    
-    geom_sf(data=subset(surveys, count > 0),aes(col = count), size = 0.2)+
+    geom_sf(data=study_region_outline,colour="gray80", fill = "transparent")+
+    geom_sf(data=surveys,col = "gray70")+
+    geom_sf(data=subset(surveys, count > 0),col = "black")+
     
     annotation_scale(style = "ticks",
                      text_face = "bold")+
@@ -510,52 +546,55 @@ for (i in 1:nrow(species_to_run)){
           panel.grid.minor = element_blank(),
           panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
     scale_color_gradient(low = 'white', high = 'darkred', na.value=NA, limits = lim)+
-    ggtitle(paste0(species$common_name," - simulated detections"))
+    ggtitle("Simulated detections")
   
-  simcount_map
+  survey_map
   
   # --------------------------------
   # ZAP
   # --------------------------------
   
   # Controls the 'residual spatial field'.  This can be adjusted to create smoother surfaces.
-  prior_range <- c(100, 0.99)        # 99% chance range is smaller than 100km
+  prior_range <- c(250, 0.99)        # 99% chance range is smaller than 250km
   prior_sigma <- c(0.1,0.01)         # 1% chance sd is larger than 0.1
-  matern_count <- inla.spde2.pcmatern(mesh_spatial,
+  matern_count <- barrierModel.define(mesh_spatial,
+                                      barrier.triangles = triBarrier,
                                       prior.range = prior_range, 
                                       prior.sigma = prior_sigma,
-                                      constr = TRUE
+                                      constr = TRUE,
+                                      range.fraction = 0.05
   )
   
   # Controls the 'residual spatial field'.  This can be adjusted to create smoother surfaces.
   prior_range <- c(1000, 0.01)        # 1% chance range is smaller than 1000km
-  prior_sigma <- c(1,0.01)            # 1% chance sd is larger than 0.5
-  matern_present <- inla.spde2.pcmatern(mesh_spatial,
+  prior_sigma <- c(1,0.01)            # 1% chance sd is larger than 1
+  matern_present <- barrierModel.define(mesh_spatial,
+                                        barrier.triangles = triBarrier,
                                         prior.range = prior_range, 
                                         prior.sigma = prior_sigma,
-                                        constr = TRUE
+                                        constr = TRUE,
+                                        range.fraction = 0.05
   )
   
   comps <- ~
     spde_count(geometry, model = matern_count) +
-    count_stratum_1(stratum_1, model = "linear", mean.linear = log(0.1), prec.linear = 1)+
-    count_stratum_2(stratum_2, model = "linear", mean.linear = log(0.1), prec.linear = 1)+
-    count_stratum_3(stratum_3, model = "linear", mean.linear = log(0.1), prec.linear = 1)+
-    count_stratum_4(stratum_4, model = "linear", mean.linear = log(0.1), prec.linear = 1)+
-    count_stratum_5(stratum_5, model = "linear", mean.linear = log(0.1), prec.linear = 1)+
-    count_stratum_6(stratum_6, model = "linear", mean.linear = log(0.1), prec.linear = 1)+
-    count_stratum_7(stratum_7, model = "linear", mean.linear = log(0.1), prec.linear = 1)+
+    count_stratum_1(stratum_1, model = "linear", mean.linear = 0, prec.linear = 1)+
+    count_stratum_2(stratum_2, model = "linear", mean.linear = 0, prec.linear = 1)+
+    count_stratum_3(stratum_3, model = "linear", mean.linear = 0, prec.linear = 1)+
+    count_stratum_4(stratum_4, model = "linear", mean.linear = 0, prec.linear = 1)+
+    count_stratum_5(stratum_5, model = "linear", mean.linear = 0, prec.linear = 1)+
+    count_stratum_6(stratum_6, model = "linear", mean.linear = 0, prec.linear = 1)+
+    count_stratum_7(stratum_7, model = "linear", mean.linear = 0, prec.linear = 1)+
     
     spde_present(geometry, model = matern_present) +
-    present_stratum_1(stratum_1, model = "linear")+
-    present_stratum_2(stratum_2, model = "linear")+
-    present_stratum_3(stratum_3, model = "linear")+
-    present_stratum_4(stratum_4, model = "linear")+
-    present_stratum_5(stratum_5, model = "linear")+
-    present_stratum_6(stratum_6, model = "linear")+
-    present_stratum_7(stratum_7, model = "linear")
+    present_stratum_1(stratum_1, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
+    present_stratum_2(stratum_2, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
+    present_stratum_3(stratum_3, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
+    present_stratum_4(stratum_4, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
+    present_stratum_5(stratum_5, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
+    present_stratum_6(stratum_6, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
+    present_stratum_7(stratum_7, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)
     
-  
   surveys$present <- as.numeric(surveys$count>0)
   
   truncated_poisson_like <-
@@ -605,9 +644,6 @@ for (i in 1:nrow(species_to_run)){
       presence_prob <- plogis(spde_present + present_stratum_1 + present_stratum_2 + present_stratum_3 + present_stratum_4 + present_stratum_5 + present_stratum_6 + present_stratum_7)
       lambda <- exp(spde_count + count_stratum_1 + count_stratum_2 + count_stratum_3 + count_stratum_4 + count_stratum_5 + count_stratum_6 + count_stratum_7 )
       
-      # Truncate areas where there is less than 1/100 chance of seeing species
-      #presence_prob[presence_prob <= 0.05] <- 0
-      
       expect_param <- presence_prob * lambda
       expect <- expect_param / (1 - exp(-lambda))
       
@@ -621,8 +657,15 @@ for (i in 1:nrow(species_to_run)){
       # )
       
     },
-    n.samples = 1000
+    n.samples = 2500
   )
+  
+  pred_orig <- pred
+  
+  # Remove pixels (set abundance to zero) if there is more than 50% chance abundance is less than 0.1
+  cellmeans <- apply(pred,1,function(x) mean(x>0.1)) # Probability pixel value is less than 0.1
+  cells_to_drop <- which(cellmeans<=0.5) # if it is more likely than not the pixel is below 0.1, remove it
+  pred[cells_to_drop,] <- 0
   
   pred_df <- cbind(as.data.frame(pred_df),st_coordinates(pred_df))
   
@@ -636,7 +679,7 @@ for (i in 1:nrow(species_to_run)){
   map3 <- ggplot() +
     
     geom_spatraster(data = rast_to_plot)+
-    geom_sf(data=study_region,colour="gray95", fill = "transparent")+
+    geom_sf(data=study_region_outline,colour="gray80", fill = "transparent")+
     coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
     
     annotation_scale(style = "ticks",
@@ -660,7 +703,7 @@ for (i in 1:nrow(species_to_run)){
     scale_fill_gradient(low = 'white', high = 'darkred', na.value=NA, 
                         limits = lim, 
                         label = comma)+
-    ggtitle("Estimated density surface")
+    ggtitle("Estimated surface")
   
   map3
   
@@ -720,14 +763,86 @@ for (i in 1:nrow(species_to_run)){
   # True sum
   sum_true <- sum(pred_df$true_count,na.rm = TRUE)
   
-  ggplot()+
+  estimate_posterior <- ggplot()+
     geom_histogram(aes(x = sum_est), fill = "dodgerblue")+
     geom_vline(aes(xintercept = sum_true), size = 2)+
     theme_bw()+
     xlab("Total")+
     ylab("")+
     ggtitle("Sum of all pixels")
+  estimate_posterior
   
+  # -----------------------------------------------------
+  # Plot
+  # -----------------------------------------------------
+  
+  species_maps <- ggarrange(map2, survey_map,map3, estimate_posterior,nrow = 2, ncol=2,align = "hv")
+  
+  png(paste0("../output/",species$common_name,".png"), height=8, width=8, units="in", res = 600)
+  print(species_maps)
+  dev.off()
+  
+  maps[[species$common_name]] <- species_maps
+  
+  if (file.exists("../output/maps.RDS")) maps <- readRDS("../output/maps.RDS")
+  
+  saveRDS(maps,"../output/maps.RDS")
+  
+  
+  # # --------------------------------
+  # # Design-based analysis
+  # # --------------------------------
+  #
+  # N <- nrow(sampling_frame_sf)
+  # n <- nrow(surveys)
+  # surveys$wgt <- N/n
+  # 
+  # design_analysis <- spsurvey::cont_analysis(surveys, 
+  #                                           vars = "count", 
+  #                                           weight = "wgt")
+  # 
+  
+  # --------------------------------
+  # Save results
+  # --------------------------------
+  if (file.exists("../output/results.RDS")) results <- readRDS("../output/results.RDS")
+  
+  results <- rbind(results, data.frame(common_name = species$common_name,
+                                       species_code = species$species_code,
+                                       species_number = NA,
+                                       sum_true = sum_true,
+                                       sum_est = median(sum_est),
+                                       sum_lcl = quantile(sum_est,0.025),
+                                       sum_ucl = quantile(sum_est,0.975)))
+  
+  results <- results %>% arrange(sum_true)
+  results$species_number <- 1:nrow(results)
+  
+  saveRDS(results,"../output/results.RDS")
+  
+  # --------------------------------
+  # Plot results
+  # --------------------------------
+  
+  result_plot <- ggplot(data = results)+
+    
+    geom_errorbarh(aes(y = species_number, xmin = sum_lcl, xmax = sum_ucl), height = 0.01, col = "dodgerblue", size = 2)+
+    geom_point(aes(y = species_number, x = sum_est), col = "dodgerblue", size = 5)+
+    
+    geom_point(aes(y = species_number, x = sum_true), fill = "white", size = 4, pch = 23)+
+    geom_point(aes(y = species_number, x = sum_true), fill = "black", size = 2, pch = 23)+
+    
+    scale_x_continuous(trans = "log10", name = "Estimate (sum of pixels)")+
+    scale_y_continuous(labels = results$common_name, name = "", breaks = 1:nrow(results))+
+    
+    theme_bw()+
+    theme(panel.grid.minor = element_blank(),
+          panel.grid.major.y = element_blank())+
+    ggtitle("True vs estimated population sizes")
+  
+  print(result_plot)
+  
+
   # # -----------------------------------------------------
   # # Estimate of sum within each Ecozone
   # # -----------------------------------------------------
@@ -750,90 +865,12 @@ for (i in 1:nrow(species_to_run)){
   #   geom_point(data = stratum_totals, aes(y = stratum, x = sum_true))+
   #   theme_bw()
   # 
-  
-  # -----------------------------------------------------
-  # Plot
-  # -----------------------------------------------------
-  
-  species_maps <- ggarrange(map2, simcount_map,map3, nrow = 3, align = "hv")
-  maps[[species$common_name]] <- species_maps
-  
-  png(paste0("../output/",species$common_name,".png"), height=8, width=4, units="in", res = 600)
-  print(species_maps)
-  dev.off()
-  
-  # --------------------------------
-  # Design-based analysis
-  # --------------------------------
-  
-  # N <- nrow(sampling_frame_sf)
-  # n <- nrow(surveys)
-  # surveys$wgt <- N/n
-  # 
-  # design_analysis <- spsurvey::cont_analysis(surveys, 
-  #                                           vars = "count", 
-  #                                           weight = "wgt")
-  # 
-  
-  # --------------------------------
-  # Save results
-  # --------------------------------
-  
-  results <- rbind(results, data.frame(common_name = species$common_name,
-                                       species_code = species$species_code,
-                                       species_number = NA,
-                                       sum_true = sum_true,
-                                       sum_est = median(sum_est),
-                                       sum_lcl = quantile(sum_est,0.025),
-                                       sum_ucl = quantile(sum_est,0.975)))
-  
-  results <- results %>% arrange(sum_true)
-  results$species_number <- 1:nrow(results)
-  
-  # --------------------------------
-  # Plot results
-  # --------------------------------
-  # 
-  # lim <- range(c(results$sum_est,results$sum_true))
-  # lim[1] <- lim[1] / 1.2
-  # lim[2] <- lim[2] *1.2
-  # 
-  # result_plot <- ggplot(data = results)+
-  #   geom_errorbar(aes(x = sum_true, ymin = sum_lcl, ymax = sum_ucl), width = 0, col = "dodgerblue")+
-  #   geom_point(aes(x = sum_true, y = sum_est), col = "dodgerblue")+
-  #   geom_text(aes(x = sum_true, y = sum_est, label = common_name), col = "dodgerblue", hjust = -0.1)+
-  #   geom_abline(slope=1,intercept=0,linetype=2)+
-  #   coord_cartesian(xlim = lim, ylim = lim)+
-  #   scale_y_continuous(trans = "log10")+
-  #   scale_x_continuous(trans = "log10")+
+  #   surveys %>% 
+  #     as.data.frame() %>%
+  #     group_by(Ecozone) %>%
+  #     subset(count>0) %>%
+  #     summarize(mean = mean(count))
   #   
-  #   theme_bw()
-  # 
-  # print(result_plot)
-  # 
-  # 
-  # --------------------------------
-  # Plot results
-  # --------------------------------
-  
-  result_plot <- ggplot(data = results)+
-    
-    geom_errorbarh(aes(y = species_number, xmin = sum_lcl, xmax = sum_ucl), height = 0.01, col = "dodgerblue", size = 2)+
-    geom_point(aes(y = species_number, x = sum_est), col = "dodgerblue", size = 5)+
-    
-    geom_point(aes(y = species_number, x = sum_true), fill = "white", size = 4, pch = 23)+
-    geom_point(aes(y = species_number, x = sum_true), fill = "black", size = 2, pch = 23)+
-    
-    scale_x_continuous(trans = "log10", name = "Estimate (sum of pixels)", limits = c(1000,100000))+
-    scale_y_continuous(labels = results$common_name, name = "", breaks = 1:nrow(results))+
-    
-    theme_bw()+
-    theme(panel.grid.minor = element_blank(),
-          panel.grid.major.y = element_blank())+
-    ggtitle("True vs estimated population sizes")
-  
-  print(result_plot)
-  
 }
 
 png("../output/species_estimates.png", height=6, width=8, units="in", res = 600)
