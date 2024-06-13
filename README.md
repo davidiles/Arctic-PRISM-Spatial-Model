@@ -38,9 +38,9 @@ To evaluate how well the model performs for estimating abundance over the entire
 
 ## Issues
 
-1) Covariates need to be refined (currently using land cover of canada 2020)
+1) Covariates need to be refined (currently only using ecozones from EBAR shapefile).  Additional covariates would be helpful.
 
-2) Precision in simulations is likey overestimated.  Real data will be noisier and will require additional variance components.
+2) Precision in simulations is likely overestimated.  Real data will be noisier and will require additional variance components.
 
 3) Need to get design-based analysis working to compare bias/precision to model-based estimates.  Even if model-based estimates aren't perfect, they may be better than design-based ones.  
    - Adapt Brandon Edwards' code.
