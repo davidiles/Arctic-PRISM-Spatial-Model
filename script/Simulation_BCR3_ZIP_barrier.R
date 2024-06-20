@@ -344,8 +344,8 @@ load("../output/PRISM_wksp.RData")
 # Create mesh and barrier feature (water)
 # Barrier example taken from: https://eliaskrainski.github.io/INLAspacetime/articles/web/barrierExample.html
 # ---------------------------
-study_region_outline <- st_union(study_region) %>% st_buffer(10) %>% st_buffer(-10)
-#sr_for_mesh <- st_union(study_region) %>% st_buffer(100)
+study_region_outline <- st_union(study_region)
+sr_for_mesh <- study_region_outline %>% st_buffer(100)
 
 # For spatial analysis in INLA
 mesh_spatial <- fm_mesh_2d_inla(
@@ -379,6 +379,7 @@ ggplot() + theme_bw() +
 
 # ---------------------------
 # Strata for analysis
+# NOTE: EXCLUDE ANY STRATA THAT COMPLETELY LACK SURVEYS
 # ---------------------------
 
 ecoshapes$Ecozone <- factor(ecoshapes$Ecozone)
@@ -393,49 +394,84 @@ dummy_vars <- model.matrix(~ -1 + Ecozone, data = sampling_frame_sf) %>% as.data
 colnames(dummy_vars) <- paste0("stratum_",1:(ncol(dummy_vars)))
 sampling_frame_sf <- cbind(sampling_frame_sf,dummy_vars)
 
-ggplot()+ geom_sf(data = ecoshapes, aes(fill = Ecozone))+scale_fill_manual(values = viridis(length(unique(ecoshapes$Ecozone))))
 # ---------------------------
 
 
 set.seed(111)
 
-species_to_run <- subset(ebirdst_runs, common_name %in% 
-                           c("Black-bellied Plover",
-                             "American Golden Plover",
-                             "Pacific Golden Plover",
-                             "Semipalmated Plover",
-                             "Whimbrel",
-                             "Hudsonian Godwit",
-                             "Bar-tailed Godwit",
-                             "Ruddy Turnstone",
-                             "Black Turnstone",
-                             "Rock Sandpiper",
-                             "Purple Sandpiper",
-                             "Red Knot",
-                             "Sanderling",
-                             "Dunlin",
-                             "Semipalmated Sandpiper",
-                             "Western Sandpiper",
-                             "Least Sandpiper",
-                             "White-rumped Sandpiper",
-                             "Baird's Sandpiper",
-                             "Pectoral Sandpiper",
-                             "Buff-breasted Sandpiper",
-                             "Long-billed Dowitcher",
-                             "Stilt Sandpiper",
-                             "Wilson's Snipe",
-                             "Red-necked Phalarope",
-                             "Red Phalarope",
-                             
-                             "Canada Goose",
-                             "Snow Goose",
-                             "Horned Lark",
-                             "Lapland Longspur",
-                             "Willow Ptarmigan",
-                             "Long-tailed Jaeger",
-                             "Savannah Sparrow",
-                             "American Tree Sparrow"))
+species_list <-  c("Black-bellied Plover",
+                   "American Golden Plover",
+                   "Pacific Golden Plover",
+                   "Semipalmated Plover",
+                   "Whimbrel",
+                   "Hudsonian Godwit",
+                   "Bar-tailed Godwit",
+                   "Ruddy Turnstone",
+                   "Black Turnstone",
+                   "Rock Sandpiper",
+                   "Purple Sandpiper",
+                   "Spotted Sandpiper",
+                   "Lesser Yellowlegs",
+                   "Red Knot",
+                   "Sanderling",
+                   "Dunlin",
+                   "Semipalmated Sandpiper",
+                   "Western Sandpiper",
+                   "Least Sandpiper",
+                   "White-rumped Sandpiper",
+                   "Baird's Sandpiper",
+                   "Pectoral Sandpiper",
+                   "Buff-breasted Sandpiper",
+                   "Long-billed Dowitcher",
+                   "Stilt Sandpiper",
+                   "Wilson's Snipe",
+                   "Red-necked Phalarope",
+                   "Red Phalarope",
+                   
+                   "Canada Goose",
+                   "Snow Goose",
+                   "Cackling Goose",
+                   "Tundra Swan",
+                   "Northern Shoveler",
+                   "Northern Pintail",
+                   "Green-winged Teal",
+                   "Greater Scaup",
+                   "King Eider",
+                   "Long-tailed Duck",
+                   "Rock Ptarmigan",
+                   "Sandhill Crane",
+                   
+                   "Lapland Longspur",
+                   "Willow Ptarmigan",
+                   "Long-tailed Jaeger",
+                   "Pomarine Jaeger",
+                   "Sabine's Gull",
+                   "Herring Gull",
+                   "Glaucous Gull",
+                   "Arctic Tern",
+                   "Red-throated Loon",
+                   "Pacific Loon",
+                   
+                   "Northern Harrier",
+                   "Rough-legged Hawk",
+                   "Short-eared Owl",
+                   "Peregrine Falcon",
+                   "Common Raven",
+                   
+                   "Horned Lark",
+                   "American Pipit",
+                   "Redpoll",
+                   "Lapland Longspur",
+                   "Smith's Longspur",
+                   "Snow Bunting",
+                   "White-crowned Sparrow",
+                   "Harris's Sparrow",
+                   "Yellow Warbler",
+                   "Savannah Sparrow",
+                   "American Tree Sparrow")
 
+species_to_run <- subset(ebirdst_runs, common_name %in% species_list)
+species_list[species_list %!in% species_to_run$common_name]
 results <- data.frame()
 maps <- list()
 
@@ -443,7 +479,7 @@ for (i in 1:nrow(species_to_run)){
   
   set.seed(111)
   
-  if (file.exists("../output/results.RDS")) results <- readRDS("../output/results.RDS")
+  if (file.exists("../output/results_ZIP.RDS")) results <- readRDS("../output/results_ZIP.RDS")
   
   species <- species_to_run[i,]
   if (nrow(results) > 0 & species$common_name %in% results$common_name) next
@@ -469,7 +505,7 @@ for (i in 1:nrow(species_to_run)){
   sampling_frame <- sampling_frame %>% crop(vect(study_region), mask = TRUE)
   
   values(ebirdSDM)[is.na(values(ebirdSDM)) & !is.na(values(sampling_frame))] <- 0
-  values(ebirdSDM) <- values(ebirdSDM)
+  values(ebirdSDM) <- values(ebirdSDM) * 10
   ebirdSDM_sf <- as.points(ebirdSDM) %>% st_as_sf() 
   
   # -----------------------------------------------------
@@ -518,12 +554,7 @@ for (i in 1:nrow(species_to_run)){
   surveys$count <- extract(ebirdSDM,vect(surveys))[,2]
   surveys$count <- rpois(length(surveys$count),surveys$count)
   surveys$present <- as.numeric(surveys$count>0)
-  
-  # Ensure the species is abundant enough to fit model
-  #   - needs to have been detected in at least 50 survey locations
-  if (sum(surveys$count>0, na.rm = TRUE) < 50){
-    next
-  }
+  #surveys <- subset(surveys)
   
   survey_map <- ggplot()+
     
@@ -549,18 +580,18 @@ for (i in 1:nrow(species_to_run)){
     theme(panel.grid.major = element_blank(), 
           panel.grid.minor = element_blank(),
           panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
-    scale_color_gradient(low = 'white', high = 'darkred', na.value=NA, limits = lim)+
+    scale_color_gradient(low = 'white', high = 'darkred', na.value="black", limits = lim)+
     ggtitle("Simulated detections")
   
   survey_map
   
   # --------------------------------
-  # ZAP
+  # Prepare priors + model components
   # --------------------------------
   
   # Controls the 'residual spatial field'.  This can be adjusted to create smoother surfaces.
-  prior_range <- c(250, 0.99)        # 99% chance range is smaller than 250km
-  prior_sigma <- c(0.1,0.01)         # 1% chance sd is larger than 0.1
+  prior_range <- c(1000,0.5)#c(200, 0.99)        # 99% chance range is smaller than 500km
+  prior_sigma <- c(1,0.01)         # 1% chance sd is larger than 0.1
   matern_count <- barrierModel.define(mesh_spatial,
                                       barrier.triangles = triBarrier,
                                       prior.range = prior_range, 
@@ -570,8 +601,8 @@ for (i in 1:nrow(species_to_run)){
   )
   
   # Controls the 'residual spatial field'.  This can be adjusted to create smoother surfaces.
-  prior_range <- c(1000, 0.01)        # 1% chance range is smaller than 1000km
-  prior_sigma <- c(1,0.01)            # 1% chance sd is larger than 1
+  prior_range <- c(100,0.5)#c(500, 0.99)         # 1% chance range is smaller than 1000km
+  prior_sigma <- c(0.5,0.01)            # 1% chance sd is larger than 1
   matern_present <- barrierModel.define(mesh_spatial,
                                         barrier.triangles = triBarrier,
                                         prior.range = prior_range, 
@@ -585,77 +616,29 @@ for (i in 1:nrow(species_to_run)){
   #     1.
   # Progressively simpler and simpler models
   
-  if (sum(surveys$count > 1) > 50){
+  sd = 2
+  mu = 0.1
   comps <- ~
     spde_count(geometry, model = matern_count) +
-    count_stratum_1(stratum_1, model = "linear", mean.linear = 0, prec.linear = 1)+
-    count_stratum_2(stratum_2, model = "linear", mean.linear = 0, prec.linear = 1)+
-    count_stratum_3(stratum_3, model = "linear", mean.linear = 0, prec.linear = 1)+
-    count_stratum_4(stratum_4, model = "linear", mean.linear = 0, prec.linear = 1)+
-    count_stratum_5(stratum_5, model = "linear", mean.linear = 0, prec.linear = 1)+
-    count_stratum_6(stratum_6, model = "linear", mean.linear = 0, prec.linear = 1)+
-    count_stratum_7(stratum_7, model = "linear", mean.linear = 0, prec.linear = 1)+
-    
-    spde_present(geometry, model = matern_present) +
-    present_stratum_1(stratum_1, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
-    present_stratum_2(stratum_2, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
-    present_stratum_3(stratum_3, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
-    present_stratum_4(stratum_4, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
-    present_stratum_5(stratum_5, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
-    present_stratum_6(stratum_6, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
-    present_stratum_7(stratum_7, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)
-  } else {
-    
-    # 
-    # comps <- ~
-    #   #spde_count(geometry, model = matern_count) +
-    #   count_stratum_1(stratum_1, model = "linear", mean.linear = 0, prec.linear = 1)+
-    #   count_stratum_2(stratum_2, model = "linear", mean.linear = 0, prec.linear = 1)+
-    #   count_stratum_3(stratum_3, model = "linear", mean.linear = 0, prec.linear = 1)+
-    #   count_stratum_4(stratum_4, model = "linear", mean.linear = 0, prec.linear = 1)+
-    #   count_stratum_5(stratum_5, model = "linear", mean.linear = 0, prec.linear = 1)+
-    #   count_stratum_6(stratum_6, model = "linear", mean.linear = 0, prec.linear = 1)+
-    #   count_stratum_7(stratum_7, model = "linear", mean.linear = 0, prec.linear = 1)+
-    #   
-    #   spde_present(geometry, model = matern_present) +
-    #   present_stratum_1(stratum_1, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
-    #   present_stratum_2(stratum_2, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
-    #   present_stratum_3(stratum_3, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
-    #   present_stratum_4(stratum_4, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
-    #   present_stratum_5(stratum_5, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
-    #   present_stratum_6(stratum_6, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)+
-    #   present_stratum_7(stratum_7, model = "linear", mean.linear = qlogis(0.05), prec.linear = 1)
-    # 
-    
-  }
+    intercept_count(rep(1, nrow(.data.)))
   
+  # --------------------------------
+  # Model formulas
+  # --------------------------------
   
-  truncated_poisson_like <-
-    if (package_version(getNamespaceVersion("INLA")) < "23.10.19-1") {
-      like(
-        family = "zeroinflatedpoisson0",
-        data = subset(surveys,present==1),
-        formula = count ~ spde_count + count_stratum_1 + count_stratum_2 + count_stratum_3 + count_stratum_4 + count_stratum_5 + count_stratum_6 + count_stratum_7
-        #control.family = list(hyper = list(theta = list(initial = -20, fixed = TRUE)))
-      )
-    } else {
-      like(
-        family = "nzpoisson",
-        data = subset(surveys,present==1),
-        formula = count ~ spde_count + count_stratum_1 + count_stratum_2 + count_stratum_3 + count_stratum_4 + count_stratum_5 + count_stratum_6 + count_stratum_7 
-      )
-    }
+  # Skip if there are fewer than 100 total detections
+  if (sum(surveys$present)<50) next
   
-  present_like <- like(
-    family = "binomial",
+  model_formula_count = as.formula(paste0('count ~ intercept_count + spde_count'))
+  count_like <- like(
+    family = "zeroinflatedpoisson1",
     data = surveys,
-    formula = present ~ spde_present + present_stratum_1 + present_stratum_2 + present_stratum_3 + present_stratum_4 + present_stratum_5 + present_stratum_6 + present_stratum_7
+    formula = model_formula_count
   )
   
   fit_zap <- bru(
     comps,
-    present_like,
-    truncated_poisson_like,
+    count_like,
     options = list(bru_verbose = 4)
   )
   
@@ -667,44 +650,26 @@ for (i in 1:nrow(species_to_run)){
   # ****************************************************************************
   # ****************************************************************************
   
-  
   pred <- generate(
     fit_zap,
     sampling_frame_sf,
     ~ {
-      presence_prob <- plogis(spde_present + present_stratum_1 + present_stratum_2 + present_stratum_3 + present_stratum_4 + present_stratum_5 + present_stratum_6 + present_stratum_7)
-      lambda <- exp(spde_count + count_stratum_1 + count_stratum_2 + count_stratum_3 + count_stratum_4 + count_stratum_5 + count_stratum_6 + count_stratum_7 )
-      
-      expect_param <- presence_prob * lambda
-      expect <- expect_param / (1 - exp(-lambda))
-      
-      #variance <- expect * (1 - exp(-lambda) * expect)
-      # list(
-      #   presence = presence_prob,
-      #   lambda = lambda,
-      #   expect = expect,
-      #   variance = variance#,
-      #   #obs_prob = (1 - presence_prob) * (count == 0) + (count > 0) * presence_prob * dpois(count, expect_param) / (1 - dpois(0, expect_param))
-      # )
-      
+      scaling_prob <- (1 - zero_probability_parameter_for_zero_inflated_poisson_1)
+      lambda <- exp(intercept_count + spde_count)
+      expect <- scaling_prob * lambda
     },
-    n.samples = 2500
-  )
+    n.samples = 2500)
   
   pred_df <- sampling_frame_sf
   pred_df$true_count <- extract(ebirdSDM,vect(pred_df))[,2]
-  
-  # Remove pixels (set abundance to zero) if there is more than 50% chance abundance is less than 0.05
-  cellmeans <- apply(pred,1,function(x) mean(x>0.1)) # Probability pixel value is less than 0.05
-  cells_to_drop <- which(cellmeans<=0.5) # if it is more likely than not the pixel is below 0.05, remove it
-  pred[cells_to_drop,] <- 0
-  
   pred_df <- cbind(as.data.frame(pred_df),st_coordinates(pred_df))
   
-  # Median predictions
+  # Mean predictions
   pred_df$pred_mean  <- apply(pred,1,function(x) mean(x,na.rm = TRUE))
-  pred_df$pred_q50  <- apply(pred,1,function(x) quantile(x,0.5,na.rm = TRUE))
-  pred_df$flag <- apply(pred,1,function(x) sum(x>100)>0)
+  
+  # Remove strata with no (or very few) surveys
+  #to_keep <- which(pred_df$Ecozone %in% c("Northern Arctic","Southern Arctic"))
+  #pred_df <- pred_df[to_keep,]
   
   rast_to_plot <- rast(pred_df[,c("X","Y","pred_mean")], type="xyz", crs = arctic_proj)
   values(rast_to_plot)[which(values(rast_to_plot)>max(lim))] <- max(lim)
@@ -836,22 +801,23 @@ for (i in 1:nrow(species_to_run)){
   # --------------------------------
   # Save results
   # --------------------------------
-  if (file.exists("../output/results.RDS")) results <- readRDS("../output/results.RDS")
+  if (file.exists("../output/results_ZIP.RDS")) results <- readRDS("../output/results_ZIP.RDS")
   
   results <- rbind(results, data.frame(common_name = species$common_name,
                                        species_code = species$species_code,
-                                       species_number = NA,
                                        n_detections = sum(surveys$count>0),
                                        sum_count = sum(surveys$count),
                                        sum_true = sum_true,
                                        sum_est = median(sum_est),
                                        sum_lcl = quantile(sum_est,0.025),
-                                       sum_ucl = quantile(sum_est,0.975)))
+                                       sum_ucl = quantile(sum_est,0.975),
+                                       cor_pred_true = cor(pred_df$true_count,pred_df$pred_mean),
+                                       species_number = NA))
   
   results <- results %>% arrange(sum_true)
   results$species_number <- 1:nrow(results)
   
-  saveRDS(results,"../output/results.RDS")
+  saveRDS(results,"../output/results_ZIP.RDS")
   
   # --------------------------------
   # Plot results
@@ -875,37 +841,63 @@ for (i in 1:nrow(species_to_run)){
   
   print(result_plot)
   
-
-  # # -----------------------------------------------------
-  # # Estimate of sum within each Ecozone
-  # # -----------------------------------------------------
-  # 
-  # stratum_totals <- data.frame()
-  # for (i in unique(sampling_frame_sf$Ecozone)){
-  #   rows <- which(sampling_frame_sf$Ecozone == i)
-  #   sum_est <- apply(pred[rows,],2,sum, na.rm = TRUE)
-  #   sum_true <- sum(pred_df$true_count[rows],na.rm = TRUE)
-  #   stratum_totals <- rbind(stratum_totals, data.frame(stratum = i,
-  #                                                      sum_est = mean(sum_est),
-  #                                                      sum_lcl = quantile(sum_est,0.025),
-  #                                                      sum_ucl = quantile(sum_est,0.975),
-  #                                                      sum_true = sum_true))
-  # }
-  # 
-  # ggplot()+
-  #   geom_point(data = stratum_totals, aes(y = stratum, x = sum_est), col = "dodgerblue")+
-  #   geom_errorbarh(data = stratum_totals, aes(y = stratum, xmin = sum_lcl, xmax = sum_ucl), col = "dodgerblue", height = 0)+
-  #   geom_point(data = stratum_totals, aes(y = stratum, x = sum_true))+
-  #   theme_bw()
-  # 
-  #   surveys %>% 
-  #     as.data.frame() %>%
-  #     group_by(Ecozone) %>%
-  #     subset(count>0) %>%
-  #     summarize(mean = mean(count))
-  #   
+  
+  # -----------------------------------------------------
+  # Estimate of sum within each Ecozone
+  # -----------------------------------------------------
+  
+  # Estimates of proportion of population in each ecozone
+  stratum_proportions <- matrix(NA, nrow=length(unique(sampling_frame_sf$Ecozone)), ncol = ncol(pred))
+  
+  for (j in 1:ncol(pred)){
+    overall_sum = sum(pred[,j])
+    estimates <- data.frame(Ecozone = sampling_frame_sf$Ecozone,pred = pred[,j]) %>%
+      group_by(Ecozone) %>%
+      summarize(prop = sum(pred)/overall_sum)
+    stratum_proportions[,j] <- estimates$prop
+  }
+  rownames(stratum_proportions) = estimates$Ecozone
+  
+  stratum_summary <- data.frame()
+  for (j in unique(sampling_frame_sf$Ecozone)){
+    
+    rows <- which(sampling_frame_sf$Ecozone == j)
+    
+    props <- stratum_proportions[j,]
+    
+    true <- sum(pred_df$true_count[rows])/sum(pred_df$true_count)
+    mean_count <- mean(subset(surveys, Ecozone == j)$count)
+    n_surveys <- nrow(subset(surveys, Ecozone == j))
+    stratum_summary <- rbind(stratum_summary, data.frame(stratum = j,
+                                                         n_surveys = n_surveys,
+                                                         true = true,
+                                                         est_mean = mean(props),
+                                                         est_lcl = quantile(props,0.025),
+                                                         est_ucl = quantile(props,0.975),
+                                                         mean_count = mean_count))
+  }
+  
+  ggplot()+
+    geom_point(data = stratum_summary, aes(y = stratum, x = est_mean), col = "dodgerblue")+
+    geom_errorbarh(data = stratum_summary, aes(y = stratum, xmin = est_lcl, xmax = est_ucl), col = "dodgerblue", height = 0)+
+    geom_point(data = stratum_summary, aes(y = stratum, x = true))+
+    theme_bw()
+  
+  rm(pred)
+  rm(pred_df)
 }
 
 png("../output/species_estimates.png", height=6, width=8, units="in", res = 600)
 print(result_plot)
 dev.off()
+
+
+
+# Credible interval coverage
+mean(results$sum_lcl < results$sum_true & results$sum_ucl > results$sum_true) # 59%
+
+# Bias
+exp(mean(log(results$sum_est) - log(results$sum_true))) # about 12%
+
+# Proportion of over and under-estimates
+mean(results$sum_est > results$sum_true) # 70% of estimates are over-estimates
