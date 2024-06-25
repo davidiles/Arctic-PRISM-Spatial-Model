@@ -235,72 +235,72 @@ setwd("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spa
 #   }
 # }
 # 
-# -----------------------------------------------------
-# Some additional visualizations
-# -----------------------------------------------------
-
-# Create hexagon grid across study area
-hexgrid <- st_make_grid(study_region_outline, cellsize = 50, square=FALSE, what = "polygons") %>%
-  st_as_sf() %>% mutate(hexid = 1:nrow(.)) %>% dplyr::rename(geometry = x)
-
-hexcent <- st_centroid(hexgrid)
-
-# Intersect with survey information
-surveys_hex <- surveys %>% st_intersection(hexgrid) %>% arrange(Year,Month,Day,PlotID)
-
-# For each species in each hexagon, calculate mean count
-species_plots <- list()
-for (species in species_list){
-
-  species_hex <- surveys_hex %>% mutate(count = count_matrix[,species])
-
-  # Summarize total effort and mean count in each hexagon
-  species_hex <- species_hex %>%
-    as.data.frame() %>%
-    group_by(PlotID,hexid) %>%
-    summarize(count = mean(count),
-              effort = mean(Plot_Area_km2 * Proportion_Surveyed)) %>%
-    group_by(hexid) %>%
-    summarize(count = sum(count)/sum(effort),
-              effort = sum(effort))
-
-  species_hex <- as.data.frame(species_hex) %>%
-    left_join(hexgrid,.)
-
-  col_lim <- c(0,max(species_hex$count,na.rm = TRUE))
-
-  species_plot <- ggplot() +
-    geom_sf(data=study_region_outline,colour="gray70", fill = "gray80")+
-    geom_sf(data=species_hex, aes(fill= count), col = "transparent")+
-    geom_sf(data=subset(species_hex,count>0), col = "black", fill = "transparent",size = 0.1)+
-
-    annotation_scale(style = "ticks",
-                   text_face = "bold")+
-
-    annotation_north_arrow(which_north = "true",
-                           location = "tr",
-                           pad_x = unit(0.25, "cm"), pad_y = unit(0.25, "cm"),
-                           height = unit(1, "cm"),
-                           width = unit(1, "cm"),
-                           style = north_arrow_fancy_orienteering(text_col = 'black',
-                                                                  line_col = 'gray20',
-                                                                  text_face = "bold",
-                                                                  fill = 'gray80'))+
-
-    theme_bw()+
-
-    theme(panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          panel.background = element_rect(fill = 'gray80', colour = 'black'))+
-    scale_fill_gradient(low = 'white', high = 'darkred', na.value=NA,
-                        label = comma)+
-    ggtitle(paste0(species," - Observed count per km^2"))
-  species_plot
-
-  species_plots[[species]] <- species_plot
-}
-
-
+# # -----------------------------------------------------
+# # Some additional visualizations
+# # -----------------------------------------------------
+# 
+# # Create hexagon grid across study area
+# hexgrid <- st_make_grid(study_region_outline, cellsize = 50, square=FALSE, what = "polygons") %>%
+#   st_as_sf() %>% mutate(hexid = 1:nrow(.)) %>% dplyr::rename(geometry = x)
+# 
+# hexcent <- st_centroid(hexgrid)
+# 
+# # Intersect with survey information
+# surveys_hex <- surveys %>% st_intersection(hexgrid) %>% arrange(Year,Month,Day,PlotID)
+# 
+# # For each species in each hexagon, calculate mean count
+# species_plots <- list()
+# for (species in species_list){
+# 
+#   species_hex <- surveys_hex %>% mutate(count = count_matrix[,species])
+# 
+#   # Summarize total effort and mean count in each hexagon
+#   species_hex <- species_hex %>%
+#     as.data.frame() %>%
+#     group_by(PlotID,hexid) %>%
+#     summarize(count = mean(count),
+#               effort = mean(Plot_Area_km2 * Proportion_Surveyed)) %>%
+#     group_by(hexid) %>%
+#     summarize(count = sum(count)/sum(effort),
+#               effort = sum(effort))
+# 
+#   species_hex <- as.data.frame(species_hex) %>%
+#     left_join(hexgrid,.)
+# 
+#   col_lim <- c(0,max(species_hex$count,na.rm = TRUE))
+# 
+#   species_plot <- ggplot() +
+#     geom_sf(data=study_region_outline,colour="gray70", fill = "gray80")+
+#     geom_sf(data=species_hex, aes(fill= count), col = "transparent")+
+#     geom_sf(data=subset(species_hex,count>0), col = "black", fill = "transparent",size = 0.1)+
+# 
+#     annotation_scale(style = "ticks",
+#                    text_face = "bold")+
+# 
+#     annotation_north_arrow(which_north = "true",
+#                            location = "tr",
+#                            pad_x = unit(0.25, "cm"), pad_y = unit(0.25, "cm"),
+#                            height = unit(1, "cm"),
+#                            width = unit(1, "cm"),
+#                            style = north_arrow_fancy_orienteering(text_col = 'black',
+#                                                                   line_col = 'gray20',
+#                                                                   text_face = "bold",
+#                                                                   fill = 'gray80'))+
+# 
+#     theme_bw()+
+# 
+#     theme(panel.grid.major = element_blank(),
+#           panel.grid.minor = element_blank(),
+#           panel.background = element_rect(fill = 'gray80', colour = 'black'))+
+#     scale_fill_gradient(low = 'white', high = 'darkred', na.value=NA,
+#                         label = comma)+
+#     ggtitle(paste0(species," - Observed count per km^2"))
+#   species_plot
+# 
+#   species_plots[[species]] <- species_plot
+# }
+# 
+# 
 # # -----------------------------------------------------
 # # Prepare sampling frame
 # # -----------------------------------------------------
