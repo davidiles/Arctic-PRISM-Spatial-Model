@@ -367,7 +367,7 @@ for (i in 1:nrow(species_to_run)){
   
   species <- species_to_run[i,]
   
-  if (file.exists("../output/results_simulation.RDS")) results <- readRDS("../output/results_simulation.RDS")
+  if (file.exists("../output/simulation_results.RDS")) results <- readRDS("../output/simulation_results.RDS")
   if (nrow(results) > 0 & species$common_name %in% results$common_name) next
   
   # -----------------------------------------------------
@@ -420,15 +420,8 @@ for (i in 1:nrow(species_to_run)){
   # --------------------------------
   
   # Controls the 'residual spatial field'.  This can be adjusted to create smoother surfaces.
-  prior_range <- c(200,0.1)         # 50% chance range is smaller than 100km
-  prior_sigma <- c(0.2,0.1)         # 1% chance sd is larger than 1
-  matern_count <- barrierModel.define(mesh_spatial,
-                                      barrier.triangles = triBarrier,
-                                      prior.range = prior_range, 
-                                      prior.sigma = prior_sigma,
-                                      constr = TRUE,
-                                      range.fraction = 0.05
-  )
+  prior_range <- c(200,0.1)           # 10% chance range is smaller than 200km
+  prior_sigma <- c(0.1,0.1)           # 10% chance sd is larger than 0.1
   
   matern_count <- inla.spde2.pcmatern(mesh_spatial,
                                        prior.range = prior_range, 
@@ -439,20 +432,19 @@ for (i in 1:nrow(species_to_run)){
   
   pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
   
-  sdat$surv_idx <- as.numeric(as.factor(sdat$survey_ID))
+  #sdat$surv_idx <- as.numeric(as.factor(sdat$survey_ID))
   sdat$plot_idx <- as.numeric(as.factor(sdat$PlotID))
   
   comps <- ~
     spde_count(geometry, model = matern_count) +
     intercept_count(rep(1, nrow(.data.))) +
-    surv_effect(surv_idx, model = "iid", constr = TRUE, hyper = list(prec = pc_prec)) +
     plot_effect(plot_idx, model = "iid", constr = TRUE, hyper = list(prec = pc_prec))
   
   # --------------------------------
   # Model formulas
   # --------------------------------
   
-  model_formula_count = count ~ intercept_count + spde_count + log_offset + surv_effect + plot_effect
+  model_formula_count = count ~ intercept_count + spde_count + log_offset + plot_effect
   
   count_like <- like(
     family = "poisson",
@@ -583,9 +575,9 @@ for (i in 1:nrow(species_to_run)){
     geom_vline(aes(xintercept = quantile(sum_est,c(0.025,0.975))), size = 1, col = "dodgerblue", linetype = 2)+
     
     theme_bw()+
-    xlab("Total")+
+    xlab("Population Estimate")+
     ylab("")+
-    ggtitle("Sum of all pixels")+
+    ggtitle("Population Estimate")+
     coord_cartesian(xlim=xlim)+
     scale_x_continuous(labels = comma)
   estimate_posterior
@@ -602,14 +594,14 @@ for (i in 1:nrow(species_to_run)){
   
   maps[[species$common_name]] <- species_maps
   
-  if (file.exists("../output/maps_simulation.RDS")) maps <- readRDS("../output/maps_simulation.RDS")
+  if (file.exists("../output/simulation_maps.RDS")) maps <- readRDS("../output/simulation_maps.RDS")
   
-  saveRDS(maps,"../output/maps_simulation.RDS")
+  saveRDS(maps,"../output/simulation_maps.RDS")
   
   # --------------------------------
   # Save results
   # --------------------------------
-  if (file.exists("../output/results_simulation.RDS")) results <- readRDS("../output/results_simulation.RDS")
+  if (file.exists("../output/simulation_results.RDS")) results <- readRDS("../output/simulation_results.RDS")
   
   results <- rbind(results, data.frame(common_name = species$common_name,
                                        species_code = species$species_code,
@@ -625,7 +617,7 @@ for (i in 1:nrow(species_to_run)){
   results <- results %>% arrange(sum_true)
   results$species_number <- 1:nrow(results)
   
-  saveRDS(results,"../output/results_simulation.RDS")
+  saveRDS(results,"../output/simulation_results.RDS")
   
   # --------------------------------
   # Plot results
@@ -639,7 +631,7 @@ for (i in 1:nrow(species_to_run)){
     geom_point(aes(y = species_number, x = sum_true), fill = "white", size = 4, pch = 23)+
     geom_point(aes(y = species_number, x = sum_true), fill = "black", size = 2, pch = 23)+
     
-    scale_x_continuous(name = "Estimate (sum of pixels)", labels = comma,trans="log10")+
+    scale_x_continuous(name = "Population Estimate", labels = comma,trans="log10")+
     scale_y_continuous(labels = results$common_name, name = "", breaks = 1:nrow(results))+
     
     theme_bw()+
