@@ -22,26 +22,33 @@ I also defined a (fairly arbitrary) "in range / out of range" cutoff for each pi
 
 - Analyze simulated data using Bayesian model.  
 
-#### Example results below
+- Script "PRISM_1_Simulation.R" conducts simulations, confirms that confidence intervals are appropriate (95% credible intervals contain the true population total for 95% of species).  Bias is minimal.
 
-Simulated surface, sample data, and fitted density surface for SESA:
+## Empirical analysis
 
-![SESA simulation](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/Semipalmated%20Sandpiper.png)
- 
-The resulting species distribution raster looks pretty good. Other species are shown in the [output folder](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/tree/main/output) .
+Currently fitting simple model for each species.  Data is from rapid surveys.
 
-To evaluate how well the model performs for estimating abundance over the entire species arctic range, sum up the estimates and compare to the "true" sum.  Results are shown for 18 species below.
+Model structure:
+- Poisson error
+- Gaussian random field for spatial autocorrelation
+- Plot-level random effect (several plots were surveyed multiple times)
+- Survey-level random effect (to account for overdispersion)
+- Habitat covariates (proportion of landscape within 5 km of survey comprised by different land cover classes from LCC2020)
 
+Model output:
+- Maps of relative density
+- Estimates of total abundance, uncorrected for detection
+
+![SESA](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/empirical_SESA.png)
+
+
+Estimates of population size from Bayesian analysis (blue), compared to estimates reported in Smith et al.'s design-based analysis.
 ![Population estimates](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/species_estimates.png)
- 
+
 *Note: Also eventually analyze the same data using design-based analysis* 
 
 ## Issues
 
-1) Covariates need to be refined (currently only using ecozones from EBAR shapefile).  Additional covariates would be helpful.
+1) Covariates need to be refined.
 
-2) Precision in simulations is likely overestimated.  Real data will be noisier and will require additional variance components.
-
-3) Need to get design-based analysis working to compare bias/precision to model-based estimates.  Even if model-based estimates aren't perfect, they may be better than design-based ones.  
-   - Adapt Brandon Edwards' code.
-   - Contact Jon Bart.
+2) Precision of Bayesian estimates is generally lower (and largely uncorrelated) with precision reported in Smith et al.'s design-based analysis.  Need to 1) confirm that design-based precision is accurate (through simulation), 2) ensure same data and covariates/strata are being used.

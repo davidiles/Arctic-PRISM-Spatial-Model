@@ -35,7 +35,7 @@ setwd("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spa
 # Load data
 # ****************************************************************
 # ****************************************************************
-# 
+
 # # -----------------------------------------------------
 # # Load BCR Shapefile
 # # -----------------------------------------------------
@@ -106,15 +106,15 @@ setwd("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spa
 # ylim <- range(as.data.frame(st_coordinates(bbox))$Y)
 # 
 # map1 <- ggplot()+
-#   
+# 
 #   geom_sf(data=study_region,colour="gray80", fill = "transparent")+
 #   geom_sf(data=surveys,size = 1)+
-#   
+# 
 #   coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
-#   
+# 
 #   annotation_scale(style = "ticks",
 #                    text_face = "bold")+
-#   
+# 
 #   annotation_north_arrow(which_north = "true",
 #                          location = "tr",
 #                          pad_x = unit(0.25, "cm"), pad_y = unit(0.25, "cm"),
@@ -124,9 +124,9 @@ setwd("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spa
 #                                                                 line_col = 'gray20',
 #                                                                 text_face = "bold",
 #                                                                 fill = 'gray80'))+
-#   
+# 
 #   theme_bw()+
-#   
+# 
 #   theme(panel.grid.major = element_blank(),
 #         panel.grid.minor = element_blank(),
 #         panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
@@ -144,14 +144,14 @@ setwd("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spa
 # # -----------------------------------------------------
 # 
 # map2 <- ggplot()+
-#   
+# 
 #   geom_sf(data=study_region,colour="gray80", fill = "transparent")+
 #   geom_sf(data=surveys,size = 1)+
-#   
+# 
 #   coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
-#   
+# 
 #   theme_bw()+
-#   
+# 
 #   theme(panel.grid.major = element_blank(),
 #         panel.grid.minor = element_blank(),
 #         panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
@@ -173,14 +173,14 @@ setwd("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spa
 # sum(nsurveys>1) # 239 plots surveyed more than once
 # 
 # map3 <- ggplot()+
-#   
+# 
 #   geom_sf(data=study_region,colour="gray80", fill = "transparent")+
 #   geom_sf(data=subset(surveys, PlotID %in% names(nsurveys[nsurveys>1])),size = 1)+
-#   
+# 
 #   coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
-#   
+# 
 #   theme_bw()+
-#   
+# 
 #   theme(panel.grid.major = element_blank(),
 #         panel.grid.minor = element_blank(),
 #         panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
@@ -222,11 +222,11 @@ setwd("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spa
 # count_matrix <- matrix(0,nrow=nrow(surveys), ncol = length(species_list), dimnames = list(surveyID = surveys$survey_ID,species = species_list))
 # 
 # for (i in 1:nrow(count_matrix)){
-#   
+# 
 #   # Count data for this survey
 #   survID <- rownames(count_matrix)[i]
 #   surv <- subset(survey_count_df, survey_ID == survID & Species_Code %in% species_list)
-#   
+# 
 #   # Fill in cells assocaited with each species count
 #   if (nrow(surv)>0){
 #     for (j in 1:nrow(surv)){
@@ -235,63 +235,72 @@ setwd("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spa
 #   }
 # }
 # 
-# # -----------------------------------------------------
-# # Some additional visualizations
-# # -----------------------------------------------------
-# 
-# # Create hexagon grid across study area
-# hexgrid <- st_make_grid(study_region_outline, cellsize = 50, square=FALSE, what = "polygons") %>%
-#   st_as_sf() %>% mutate(hexid = 1:nrow(.)) %>% dplyr::rename(geometry = x)
-# 
-# hexcent <- st_centroid(hexgrid)
-# 
-# # Intersect with survey information
-# surveys_hex <- surveys %>% st_intersection(hexgrid) %>% arrange(Year,Month,Day,PlotID)
-# 
-# # For each species in each hexagon, calculate mean count
-# species_plots <- list()
-# for (species in species_list){
-#   
-#   species_hex <- surveys_hex %>% mutate(count = count_matrix[,species])
-#   
-#   # Summarize total effort and mean count in each hexagon
-#   species_hex <- species_hex %>%
-#     as.data.frame() %>%
-#     group_by(PlotID,hexid) %>%
-#     summarize(count = mean(count),
-#               effort = mean(Plot_Area_km2 * Proportion_Surveyed)) %>%
-#     group_by(hexid) %>%
-#     summarize(count = sum(count)/sum(effort),
-#               effort = sum(effort))
-#   
-#   species_hex <- as.data.frame(species_hex) %>% 
-#     left_join(hexcent,.)
-#   
-#   col_lim <- c(0,max(species_hex$count,na.rm = TRUE))
-#   
-#   species_plot <- ggplot()+
-#     
-#     geom_sf(data=study_region,colour="gray5", fill = "transparent")+
-#     geom_sf(data=species_hex, aes(size = effort, col= count))+
-#     geom_sf(data=subset(species_hex, count == 0), col = "black", shape = 4,)+
-#     
-#     coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
-#     
-#     theme_bw()+
-#     
-#     theme(panel.grid.major = element_blank(),
-#           panel.grid.minor = element_blank(),
-#           panel.border = element_rect(colour = "black", fill="NA", linewidth = 1),
-#           panel.background = element_rect(fill = 'black', colour = NA))+
-#     scale_color_gradientn(colours = viridis(10), na.value=NA, name = "Mean count")+
-# 
-#     scale_size_continuous(name = "Survey Effort", range = c(1,4), guide = "none")+
-#     ggtitle(species)
-#   
-#   species_plots[[species]] <- species_plot
-# }
-# 
-# 
+# -----------------------------------------------------
+# Some additional visualizations
+# -----------------------------------------------------
+
+# Create hexagon grid across study area
+hexgrid <- st_make_grid(study_region_outline, cellsize = 50, square=FALSE, what = "polygons") %>%
+  st_as_sf() %>% mutate(hexid = 1:nrow(.)) %>% dplyr::rename(geometry = x)
+
+hexcent <- st_centroid(hexgrid)
+
+# Intersect with survey information
+surveys_hex <- surveys %>% st_intersection(hexgrid) %>% arrange(Year,Month,Day,PlotID)
+
+# For each species in each hexagon, calculate mean count
+species_plots <- list()
+for (species in species_list){
+
+  species_hex <- surveys_hex %>% mutate(count = count_matrix[,species])
+
+  # Summarize total effort and mean count in each hexagon
+  species_hex <- species_hex %>%
+    as.data.frame() %>%
+    group_by(PlotID,hexid) %>%
+    summarize(count = mean(count),
+              effort = mean(Plot_Area_km2 * Proportion_Surveyed)) %>%
+    group_by(hexid) %>%
+    summarize(count = sum(count)/sum(effort),
+              effort = sum(effort))
+
+  species_hex <- as.data.frame(species_hex) %>%
+    left_join(hexgrid,.)
+
+  col_lim <- c(0,max(species_hex$count,na.rm = TRUE))
+
+  species_plot <- ggplot() +
+    geom_sf(data=study_region_outline,colour="gray70", fill = "gray80")+
+    geom_sf(data=species_hex, aes(fill= count), col = "transparent")+
+    geom_sf(data=subset(species_hex,count>0), col = "black", fill = "transparent",size = 0.1)+
+
+    annotation_scale(style = "ticks",
+                   text_face = "bold")+
+
+    annotation_north_arrow(which_north = "true",
+                           location = "tr",
+                           pad_x = unit(0.25, "cm"), pad_y = unit(0.25, "cm"),
+                           height = unit(1, "cm"),
+                           width = unit(1, "cm"),
+                           style = north_arrow_fancy_orienteering(text_col = 'black',
+                                                                  line_col = 'gray20',
+                                                                  text_face = "bold",
+                                                                  fill = 'gray80'))+
+
+    theme_bw()+
+
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_rect(fill = 'gray80', colour = 'black'))+
+    scale_fill_gradient(low = 'white', high = 'darkred', na.value=NA,
+                        label = comma)+
+    ggtitle(paste0(species," - Observed count per km^2"))
+  species_plot
+
+  species_plots[[species]] <- species_plot
+}
+
+
 # # -----------------------------------------------------
 # # Prepare sampling frame
 # # -----------------------------------------------------
@@ -501,7 +510,6 @@ load("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spat
 
 results <- data.frame()
 maps <- list()
-shorebirds <- c("BBPL","AMGP","CRPL","SEPL","WHIM","HUGO","RUTU","REKN","STSA","SAND","DUNL","PUSA","BASA","LESA","WRSA","BBSA","PESA","SESA","LBDO","WISN","RNPH","REPH")
 
 for (species in species_list){
   
@@ -680,9 +688,9 @@ for (species in species_list){
   # Plot
   # -----------------------------------------------------
 
-  species_maps <- ggarrange(survey_map,map3, estimate_posterior,nrow = 3, ncol=1,align = "hv")
+  species_maps <- ggarrange(survey_map,map3,nrow = 2, ncol=1,align = "hv")
 
-  png(paste0("../output/empirical_",species,".png"), height=12, width=6, units="in", res = 600)
+  png(paste0("../output/empirical_",species,".png"), height=8, width=6, units="in", res = 600)
   print(species_maps)
   dev.off()
 
@@ -806,6 +814,10 @@ result_comparison_plot <- ggplot(data = result_comparison)+
   ggtitle("Estimated population sizes\n\n(uncorrected for detection)")
 
 result_comparison_plot
+png("../output/species_estimates.png", height=8, width=6, units="in", res = 600)
+print(result_comparison_plot)
+dev.off()
+
 
 lim <- range(result_comparison[,c("CV","sum_CV")],na.rm = TRUE)
 CV_comparison_plot <- ggplot(data = result_comparison)+
