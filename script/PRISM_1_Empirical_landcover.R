@@ -700,46 +700,45 @@ for (species in species_list){
 
   saveRDS(maps,"../output/empirical_maps.RDS")
 
+  # --------------------------------
+  # Save results
+  # --------------------------------
+  if (file.exists("../output/empirical_results.RDS")) results <- readRDS("../output/empirical_results.RDS")
 
-  # # --------------------------------
-  # # Save results
-  # # --------------------------------
-  # if (file.exists("../output/empirical_results.RDS")) results <- readRDS("../output/empirical_results.RDS")
-  # 
-  # results <- rbind(results, data.frame(species = species,
-  #                                      species_number = NA,
-  #                                      n_detections = sum(sdat$count>0),
-  #                                      sum_count = sum(sdat$count),
-  #                                      sum_est = median(sum_est),
-  #                                      sum_lcl = quantile(sum_est,0.025),
-  #                                      sum_ucl = quantile(sum_est,0.975),
-  #                                      sum_CV = sd(sum_est)/mean(sum_est)))
-  # 
-  # results <- results %>% arrange(sum_est)
-  # results$species_number <- 1:nrow(results)
-  # 
-  # saveRDS(results,"../output/empirical_results.RDS")
-  # 
-  # # --------------------------------
-  # # Plot results
-  # # --------------------------------
-  # 
-  # result_plot <- ggplot(data = results)+
-  #   
-  #   geom_errorbarh(aes(y = species_number, xmin = sum_lcl, xmax = sum_ucl), height = 0.01, col = "dodgerblue", size = 2)+
-  #   geom_point(aes(y = species_number, x = sum_est), col = "dodgerblue", size = 5)+
-  #   
-  #   scale_x_continuous(trans = "log10", name = "Estimate (sum of pixels)", labels = comma)+
-  #   scale_y_continuous(labels = results$species, name = "", breaks = 1:nrow(results))+
-  #   
-  #   theme_bw()+
-  #   theme(panel.grid.minor = element_blank(),
-  #         panel.grid.major.y = element_blank())+
-  #   ggtitle("Estimated population sizes\n\n(uncorrected for detection)")
-  # 
-  # print(result_plot)
-  # 
-  # 
+  results <- rbind(results, data.frame(species = species,
+                                       species_number = NA,
+                                       n_detections = sum(sdat$count>0),
+                                       sum_count = sum(sdat$count),
+                                       sum_est = median(sum_est),
+                                       sum_lcl = quantile(sum_est,0.025),
+                                       sum_ucl = quantile(sum_est,0.975),
+                                       sum_CV = sd(sum_est)/mean(sum_est)))
+
+  results <- results %>% arrange(sum_est)
+  results$species_number <- 1:nrow(results)
+
+  saveRDS(results,"../output/empirical_results.RDS")
+
+  # --------------------------------
+  # Plot results
+  # --------------------------------
+
+  result_plot <- ggplot(data = results)+
+
+    geom_errorbarh(aes(y = species_number, xmin = sum_lcl, xmax = sum_ucl), height = 0.01, col = "dodgerblue", size = 2)+
+    geom_point(aes(y = species_number, x = sum_est), col = "dodgerblue", size = 5)+
+
+    scale_x_continuous(trans = "log10", name = "Estimate (sum of pixels)", labels = comma)+
+    scale_y_continuous(labels = results$species, name = "", breaks = 1:nrow(results))+
+
+    theme_bw()+
+    theme(panel.grid.minor = element_blank(),
+          panel.grid.major.y = element_blank())+
+    ggtitle("Estimated population sizes\n\n(uncorrected for detection)")
+
+  print(result_plot)
+
+
   # # -----------------------------------------------------
   # # Estimate of sum within each Ecozone
   # # -----------------------------------------------------
