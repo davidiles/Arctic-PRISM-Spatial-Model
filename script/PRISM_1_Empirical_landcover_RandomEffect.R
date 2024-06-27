@@ -837,6 +837,24 @@ print(result_comparison_plot)
 dev.off()
 
 
+lim <- range(result_comparison[,c("sum_est","Est_Uncorrected")],na.rm = TRUE)
+est_comparison_plot <- ggplot(data = result_comparison)+
+  
+  geom_point(aes(y = sum_est, x = Est_Uncorrected))+
+  geom_label_repel(aes(y = sum_est, x = Est_Uncorrected, label = Species_Code))+
+  geom_abline(intercept=0,slope=1)+
+  theme_bw()+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_blank())+
+  scale_x_continuous(limits=lim,trans="log10")+
+  scale_y_continuous(limits=lim,trans="log10")+
+  
+  ylab("Bayesian")+
+  xlab("Design-based")+
+  ggtitle("Comparison of Population Estimate")
+
+est_comparison_plot
+
 lim <- range(result_comparison[,c("CV","sum_CV")],na.rm = TRUE)
 CV_comparison_plot <- ggplot(data = result_comparison)+
   
