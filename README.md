@@ -49,6 +49,8 @@ Estimates of population size from Bayesian analysis (blue), compared to estimate
 
 ## Issues
 
-1) Covariates need to be refined.
+1) Data used in analysis needs to be checked by Paul/others.  Should "incidentals" be included, or just birds in plot?
 
-2) Precision of Bayesian estimates is generally lower (and largely uncorrelated) with precision reported in Smith et al.'s design-based analysis.  Need to 1) confirm that design-based precision is accurate (through simulation), 2) ensure same data and covariates/strata are being used.
+2) Covariates need to be refined.
+
+3) Precision of Bayesian estimates is generally lower (and largely uncorrelated) with precision reported in Smith et al.'s design-based analysis.  Need to 1) confirm that design-based precision is accurate (through simulation), 2) ensure same data and covariates/strata are being used.
