@@ -832,10 +832,10 @@ result_comparison_plot <- ggplot(data = result_comparison)+
   ggtitle("Estimated population sizes\n\n(uncorrected for detection)")
 
 result_comparison_plot
+
 png("../output/species_estimates.png", height=8, width=6, units="in", res = 600)
 print(result_comparison_plot)
 dev.off()
-
 
 lim <- range(result_comparison[,c("sum_est","Est_Uncorrected")],na.rm = TRUE)
 est_comparison_plot <- ggplot(data = result_comparison)+
