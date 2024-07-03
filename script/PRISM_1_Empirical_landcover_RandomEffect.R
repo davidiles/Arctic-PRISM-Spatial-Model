@@ -56,7 +56,7 @@ study_region$BCR_PROV <- paste0(study_region$PROVINCE_S,"_",study_region$BCR) %>
 
 
 rawdat <- survey_data <- read.csv("../data/fromChristine/PRISM files for Dave/PRISM_Contacts_and_Survey_Counts_20220110.csv")
-survey_data <- survey_data %>% subset(Plot_type %in% c("Rapid"))
+survey_data <- survey_data #%>% subset(Plot_type %in% c("Rapid"))
 
 # -----------------------------------------------------
 # Load survey locations

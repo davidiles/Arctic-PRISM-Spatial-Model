@@ -47,10 +47,21 @@ Estimates of population size from Bayesian analysis (blue), compared to estimate
 
 *Note: Also eventually analyze the same data using design-based analysis* 
 
-## Issues
+## Issues / Ideas
 
-1) Data used in analysis needs to be checked by Paul/others.  Should "incidentals" be included, or just birds in plot?
+1) Currently only using Rapid Surveys, and removing all observations outside plot.
+ - Include Intensive Surveys in same analysis (improve precision?).  Set prior of "intensive survey effect" to 1.13 as per Paul's previous analysis (mean across species), but only fit effect for each species separately.
+ - Reconnaissance surveys on spaghetti transects - do we have an effort measurement to associate with these?  If so, can include in analysis.
+ 
 
-2) Covariates need to be refined.
+2) Need to use same covariate definitions as in Paul's original analysis, along with same strata that were used to select survey locations.
 
-3) Precision of Bayesian estimates is generally lower (and largely uncorrelated) with precision reported in Smith et al.'s design-based analysis.  Need to 1) confirm that design-based precision is accurate (through simulation), 2) ensure same data and covariates/strata are being used.
+3) Precision of Bayesian estimates is generally lower (and largely uncorrelated) with precision reported in Smith et al.'s design-based analysis.  Need to confirm that design-based precision is accurate (through simulation), and ensure same data and covariates/strata are being used.
+
+4) Evaluate change analysis through simulation.  Start by assuming same plots are revisited.  2 levels of spatial autocorrelation in change pattern (highly patchy vs highly continuous).  For each simulation scenario, evaluate correlation (x-y plot) between true change and estimate change of overall population.
+
+5) Random year effects?  These will be confounded with space, but may be somewhat (?) estimable since many sites have been visited twice?  Or perhaps use 5-year windows?
+
+
+
+- No LESA detected in intensive plots?

@@ -12,38 +12,29 @@ for (reps in 1:1000){
   
   site_effect <- rnorm(max(dat$site),0,1)
   
-  survey_effect <- rnorm(max(dat$survey),0,0.3)
-  
   dat$site_effect <- site_effect[dat$site]
-  dat$survey_effect <- survey_effect[dat$survey]
+  dat$lambda <- exp(log(10) + dat$site_effect)
   
-  dat$lambda <- exp(dat$site_effect + dat$survey_effect)
+  dat$count <- rnbinom(nrow(dat),mu = dat$lambda, size = 0.8)
+  range(dat$count)
   
-  dat$count <- rpois(nrow(dat),dat$lambda)
-  
-  sdat <- sample_n(dat,500)
+  sdat <- sample_n(dat,1000)
   sdat$site <- as.numeric(as.factor(sdat$site))
-  sdat$survey <- as.numeric(as.factor(paste0(sdat$site,"-",sdat$survey)))
   
   # ------------------------------------------------------
   # Inlabru
   # ------------------------------------------------------
   
-  pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
+  pc_prec <- list(prior = "pcprec", param = c(2, 0.1))
   
   comps <- ~
     intercept_count(rep(1, nrow(.data.))) +
-    sv(survey, constr = TRUE, hyper = list(prec = pc_prec),model = "iid", mapper = bru_mapper_index(max(sdat$survey))) +
-    st(site, constr = TRUE, hyper = list(prec = pc_prec),model = "iid", mapper = bru_mapper_index(max(sdat$site)))
+    st(survey, constr = TRUE, hyper = list(prec = pc_prec),model = "iid", mapper = bru_mapper_index(max(sdat$site)))
   
-  # --------------------------------
-  # Model formulas
-  # --------------------------------
-  
-  model_formula_count = count ~ intercept_count + sv + st
+  model_formula_count = count ~ intercept_count + st
   
   count_like <- like(
-    family = "poisson",
+    family = "nbinomial",
     data = sdat,
     formula = model_formula_count)
   
@@ -56,13 +47,10 @@ for (reps in 1:1000){
   summary(fit)
   
   # ****************************************************************************
-  # ****************************************************************************
   # GENERATE PREDICTIONS FOR EVERY PIXEL ON LANDSCAPE
   # ****************************************************************************
-  # ****************************************************************************
   
-  sampling_frame <- data.frame(site = 1:max(dat$site),
-                               survey = max(sdat$survey)+1)
+  sampling_frame <- data.frame(site = 1:max(dat$site))
   
   # True sum
   true_sum <- dat %>%
@@ -75,23 +63,21 @@ for (reps in 1:1000){
   # accounting for random effects
   pred <- generate(fit,
                    data = sampling_frame,
-                   #formula = ~ exp(intercept_count + st_eval(site) + sv_eval(survey)),
                    formula = ~ intercept_count,
                    n.samples = 1000)
   
-  var_sv <- 1/fit$summary.hyperpar$'0.5quant'[1]
   var_st <-  1/fit$summary.hyperpar$'0.5quant'[2]
   
-  pred <- exp(pred + 0.5*var_sv + 0.5*var_st)
-    
+  pred <- exp(pred + 0.5*var_st)
+  
   # Estimate of sum
   sum <- apply(pred,2,sum)
   
   # Predictions_naive
   pred_naive <- generate(fit,
-                   data = sampling_frame,
-                   formula = ~ exp(intercept_count),
-                   n.samples = 1000)
+                         data = sampling_frame,
+                         formula = ~ exp(intercept_count),
+                         n.samples = 1000)
   
   # Estimate of sum
   sum_naive <- apply(pred_naive,2,sum)
@@ -121,5 +107,8 @@ for (reps in 1:1000){
   print(result_plot)
 }
 
+# Credible interval coverage when including random effect variance in summation
+mean(results$lcl<results$true_sum & results$ucl > results$true_sum) # 87%
 
-mean(results$lcl<results$true_sum & results$ucl > results$true_sum)
+# Credible interval coverage when omitting random effect variance in summation
+mean(results$lcl_naive<results$true_sum & results$ucl_naive > results$true_sum) # 64%
