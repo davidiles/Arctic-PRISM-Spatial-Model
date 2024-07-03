@@ -155,11 +155,10 @@ for (i in 1:nrow(species_to_run)){
   sdat <- subset(sdat,Proportion_Surveyed >0.5)
   sdat$Plot_Year <- paste0(sdat$PlotID,"-",sdat$Year) %>% as.factor() %>% as.numeric()
   
-  plot_effects <- rnorm(max(sdat$Plot_Year),0,0.3)
+  plot_effects <- rnorm(max(sdat$Plot_Year),0,0.2)
   
-  sdat$count <- rnbinom(nrow(sdat),
-                        mu = sdat$true * sdat$Plot_Area_km2 * sdat$Proportion_Surveyed * exp(plot_effects[sdat$Plot_Year]),
-                        size = 5)
+  sdat$count <- rpois(nrow(sdat),
+                      lambda = sdat$true * sdat$Plot_Area_km2 * sdat$Proportion_Surveyed * exp(plot_effects[sdat$Plot_Year]))
   sdat$present <- as.numeric(sdat$count > 0)
   
   range(sdat$count)
@@ -193,7 +192,7 @@ for (i in 1:nrow(species_to_run)){
                                       constr = TRUE
   )
   
-  pc_prec <- list(prior = "pcprec", param = c(0.1, 0.01))
+  pc_prec <- list(prior = "pcprec", param = c(0.1, 0.1))
   
   sdat$plot_idx <- as.numeric(as.factor(sdat$Plot_Year))
   
@@ -214,7 +213,7 @@ for (i in 1:nrow(species_to_run)){
   # --------------------------------
   
   like_rapid <- like(
-    family = "nbinomial",
+    family = "poisson",
     data = subset(sdat, Survey_Method == "rapid"),
     
     formula = count ~ 
@@ -230,7 +229,7 @@ for (i in 1:nrow(species_to_run)){
       PC3_beta2)
   
   like_intensive <- like(
-    family = "nbinomial",
+    family = "poisson",
     data = subset(sdat, Survey_Method == "intensive"),
     
     formula = count ~ 
@@ -269,8 +268,7 @@ for (i in 1:nrow(species_to_run)){
   # ****************************************************************************
   
   # Random effect estimates
-  #var_svy <- 1/fit$summary.hyperpar$'0.5quant'[3]
-  var_plt <-  1/fit$summary.hyperpar$'0.5quant'[5]
+  var_plt <-  1/fit$summary.hyperpar$'0.5quant'[3]
   
   pred <- generate(
     fit,
@@ -338,7 +336,7 @@ for (i in 1:nrow(species_to_run)){
     
     geom_spatraster(data = rast_to_plot)+
     geom_sf(data=study_region_outline,colour="gray80", fill = "transparent")+
-
+    
     annotation_scale(style = "ticks",
                      text_face = "bold")+
     
