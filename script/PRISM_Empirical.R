@@ -532,27 +532,6 @@ for (species in (species_list)){
   sdat$Plot_Year <- paste0(sdat$PlotID,"-",sdat$Year) %>% as.factor() %>% as.numeric()
   
   # --------------------------------
-  # How many plots were surveyed in multiple ways?
-  # --------------------------------
-  
-  rapid_counts <- subset(sdat, Survey_Method == "rapid") %>%
-    as.data.frame() %>%
-    group_by(Plot_Year) %>%
-    summarize(count_rapid = mean(count/exp(log_offset)))
-  
-  intensive_counts <- subset(sdat, Survey_Method == "intensive") %>%
-    as.data.frame() %>%
-    group_by(Plot_Year) %>%
-    summarize(count_intensive = mean(count/exp(log_offset)))
-  
-  # Compare
-  cmpr <- full_join(rapid_counts,intensive_counts) %>% na.omit()
-  
-  ggplot(data = na.omit(cmpr))+
-    geom_jitter(aes(x = count_rapid, y = count_intensive))+
-    theme_bw()
-  
-  # --------------------------------
   # Prepare priors + model components
   # --------------------------------
   
@@ -572,7 +551,8 @@ for (species in (species_list)){
   comps <- ~
     spde_count(geometry, model = matern_count) +
     intercept_rapid(rep(1, nrow(.data.))) +
-    intensive(rep(1, nrow(.data.)), mean.linear = log(1/1.15), prec.linear = 16) +
+    intensive_effect(rep(1, nrow(.data.)), mean.linear = log(1/1.15), prec.linear = 16) +
+    
     plot(plot_idx, model = "iid", constr = TRUE, hyper = list(prec = pc_prec))+
     PC1_beta1(PC1, model = "linear", mean.linear = 0, prec.linear = 100)+
     PC1_beta2(PC1^2, model = "linear", mean.linear = 0, prec.linear = 100)+
@@ -603,11 +583,11 @@ for (species in (species_list)){
   
   like_intensive <- like(
     family = "nbinomial",
-    data = subset(sdat, Survey_Method == "intensive"),
+    data = subset(sdat, Survey_Method %in% c("intensive","rope drag")),
     
     formula = count ~ 
       intercept_rapid +
-      intensive +
+      intensive_effect +
       spde_count + 
       plot + 
       log_offset +
@@ -733,9 +713,11 @@ for (species in (species_list)){
   # 
   # saveRDS(maps,"../output/empirical_maps.RDS")
   # 
+  
   # --------------------------------
   # Save results
   # --------------------------------
+  
   if (file.exists("../output/empirical_results_nbinomial")) results <- readRDS("../output/empirical_results_nbinomial")
   
   results <- rbind(results, data.frame(species = species,
@@ -746,8 +728,6 @@ for (species in (species_list)){
                                        sum_lcl = quantile(sum_est,0.025),
                                        sum_ucl = quantile(sum_est,0.975),
                                        sum_CV = sd(sum_est)/mean(sum_est),
-                                       nbin_size_rapid = fit$summary.hyperpar$mean[1],
-                                       nbin_size_intensive = fit$summary.hyperpar$mean[2],
                                        spde_range = fit$summary.hyperpar$mean[3],
                                        spde_sd = fit$summary.hyperpar$mean[4],
                                        plotRE_sd = sqrt(var_plt),
@@ -762,20 +742,31 @@ for (species in (species_list)){
   # Plot results
   # --------------------------------
   
-  result_plot <- ggplot(data = results)+
+  oldPrism <- read.csv("../data/fromPaul/prism_estimates_designbased.csv")
+  
+  result_comparison <- full_join(oldPrism, results, by = c("Species_Code" = "species")) %>%
+    subset(!is.na(sum_est)) %>%
+    arrange(sum_est)
+  
+  result_comparison_plot <- ggplot(data = result_comparison)+
     
     geom_errorbarh(aes(y = species_number, xmin = sum_lcl, xmax = sum_ucl), height = 0.01, col = "dodgerblue", size = 2)+
     geom_point(aes(y = species_number, x = sum_est), col = "dodgerblue", size = 5)+
+    geom_point(aes(y = species_number, x = Est_Uncorrected), col = "black", size = 2)+
     
-    scale_x_continuous(trans = "log10", name = "Estimate (sum of pixels)", labels = comma)+
-    scale_y_continuous(labels = results$species, name = "", breaks = 1:nrow(results))+
+    scale_x_continuous(name = "Population Estimate", labels = comma, trans = "log10")+
+    scale_y_continuous(labels = result_comparison$Species_Code, name = "", breaks = 1:nrow(result_comparison))+
     
     theme_bw()+
     theme(panel.grid.minor = element_blank(),
           panel.grid.major.y = element_blank())+
     ggtitle("Estimated population sizes\n\n(uncorrected for detection)")
   
-  print(result_plot)
+  print(result_comparison_plot)
+  
+  png("../output/species_estimates.png", height=8, width=6, units="in", res = 600)
+  print(result_comparison_plot)
+  dev.off()
   
   # # -----------------------------------------------------
   # # Estimate of sum within each Ecozone
@@ -829,7 +820,6 @@ for (species in (species_list)){
 results <- readRDS("../output/empirical_results_nbinomial.RDS")
 
 oldPrism <- read.csv("../data/fromPaul/prism_estimates_designbased.csv")
-results$species[results$species %!in% oldPrism$Species_Code]
 
 result_comparison <- full_join(oldPrism, results, by = c("Species_Code" = "species")) %>%
   subset(!is.na(sum_est)) %>%

@@ -146,7 +146,7 @@ for (i in (1:nrow(species_to_run))){
   
   # -----------------------------------------------------
   # Extract expected counts at survey location
-  # Simulate poisson observations
+  # Simulate nbinomial observations
   # -----------------------------------------------------
   
   sdat <- surveys
@@ -155,7 +155,7 @@ for (i in (1:nrow(species_to_run))){
   sdat <- subset(sdat,Proportion_Surveyed > 0.5)
   sdat$Plot_Year <- paste0(sdat$PlotID,"-",sdat$Year) %>% as.factor() %>% as.numeric()
   
-  sdat$count <- rpois(nrow(sdat),lambda = sdat$true * sdat$Plot_Area_km2 * sdat$Proportion_Surveyed)
+  sdat$count <- rnbinom(nrow(sdat),mu = sdat$true * sdat$Plot_Area_km2 * sdat$Proportion_Surveyed, size = 10)
   sdat$present <- as.numeric(sdat$count > 0)
   
   range(sdat$count)
@@ -189,14 +189,13 @@ for (i in (1:nrow(species_to_run))){
                                       constr = TRUE
   )
   
-  pc_prec <- list(prior = "pcprec", param = c(0.1, 0.01))
+  pc_prec <- list(prior = "pcprec", param = c(0.1, 0.1))
   
   sdat$plot_idx <- as.numeric(as.factor(sdat$Plot_Year))
   
   comps <- ~
     spde_count(geometry, model = matern_count) +
     intercept_rapid(rep(1, nrow(.data.))) +
-    ropedrag_effect(rep(1, nrow(.data.)), mean.linear = 0, prec.linear = 16) +
     intensive_effect(rep(1, nrow(.data.)), mean.linear = 0, prec.linear = 16) +
     plot(plot_idx, model = "iid", constr = TRUE, hyper = list(prec = pc_prec))+
     PC1_beta1(PC1, model = "linear", mean.linear = 0, prec.linear = 100)+
@@ -211,7 +210,7 @@ for (i in (1:nrow(species_to_run))){
   # --------------------------------
   
   like_rapid <- like(
-    family = "poisson",
+    family = "nbinomial",
     data = subset(sdat, Survey_Method == "rapid"),
     
     formula = count ~ 
@@ -227,8 +226,8 @@ for (i in (1:nrow(species_to_run))){
       PC3_beta2)
   
   like_intensive <- like(
-    family = "poisson",
-    data = subset(sdat, Survey_Method == "intensive"),
+    family = "nbinomial",
+    data = subset(sdat, Survey_Method %in% c("intensive","rope drag")),
     
     formula = count ~ 
       intercept_rapid +
@@ -243,28 +242,10 @@ for (i in (1:nrow(species_to_run))){
       PC2_beta2+
       PC3_beta2)
   
-  like_ropedrag <- like(
-    family = "poisson",
-    data = subset(sdat, Survey_Method == "rope drag"),
-    
-    formula = count ~ 
-      intercept_rapid +
-      ropedrag_effect +
-      spde_count + 
-      plot + 
-      log_offset +
-      PC1_beta1+
-      PC2_beta1+
-      PC3_beta1+
-      PC1_beta2+
-      PC2_beta2+
-      PC3_beta2)
-  
   fit <- bru(
     comps,
     like_rapid,
     like_intensive,
-    like_ropedrag,
     options = list(bru_verbose = 4)
   )
   
@@ -297,7 +278,7 @@ for (i in (1:nrow(species_to_run))){
       PC1_beta2+
       PC2_beta2+
       PC3_beta2,
-    n.samples = 2000)
+    n.samples = 1000)
   
   pred <- exp(pred + 0.5*var_plt)
   
@@ -318,6 +299,7 @@ for (i in (1:nrow(species_to_run))){
   map2 <- ggplot()+
     
     geom_spatraster(data = ebirdSDM) +
+    geom_sf(data=surveys,colour="black", size = 0.1)+
     geom_sf(data=study_region_outline,colour="gray80", fill = "transparent")+
     
     annotation_scale(style = "ticks",
@@ -343,7 +325,7 @@ for (i in (1:nrow(species_to_run))){
                         label = comma)+
     ggtitle("Simulated density (count / km^2)")
   
-  #map2
+  map2
   
   # ------------------------------
   # Median predictions
@@ -433,9 +415,13 @@ for (i in (1:nrow(species_to_run))){
                                        sum_count = sum(sdat$count),
                                        sum_true = sum_true,
                                        sum_est = median(sum_est),
-                                       sum_lcl = quantile(sum_est,0.025),
-                                       sum_ucl = quantile(sum_est,0.975),
+                                       sum_lcl = quantile(sum_est,0.05),
+                                       sum_ucl = quantile(sum_est,0.95),
                                        sum_CV = sd(sum_est)/mean(sum_est),
+                                       spde_range = fit$summary.hyperpar$mean[3],
+                                       spde_sd = fit$summary.hyperpar$mean[4],
+                                       plotRE_sd = sqrt(var_plt),
+                                       intensive_effect = exp(fit$summary.fixed["intensive","mean"]),
                                        species_number = NA))
   
   results <- results %>% arrange(sum_true)
@@ -465,20 +451,25 @@ for (i in (1:nrow(species_to_run))){
   
   print(result_plot)
   
+  png("../output/simulation_species_estimates_nbinomial.png", height=6, width=8, units="in", res = 600)
+  print(result_plot)
+  dev.off()
+  
   rm(pred)
   rm(pred_df)
   
 }
 
-png("../output/simulation_species_estimates_nbinomial.png", height=6, width=8, units="in", res = 600)
-print(result_plot)
-dev.off()
 
-# Credible interval coverage
-mean(results$sum_lcl < results$sum_true & results$sum_ucl > results$sum_true) # 0.75
+if (file.exists("../output/simulation_results_nbinomial.RDS")) results <- readRDS("../output/simulation_results_nbinomial.RDS")
+
+# Credible interval coverage (should be 90% if nominal)
+mean(results$sum_lcl < results$sum_true & results$sum_ucl > results$sum_true) # 0.76
+
+subset(results, results$sum_lcl > results$sum_true | results$sum_ucl < results$sum_true)
 
 # Bias
-exp(mean(log(results$sum_est) - log(results$sum_true))) # 1.15
+exp(mean(log(results$sum_est) - log(results$sum_true))) # 7%
 
 # Proportion of over and under-estimates
-mean(results$sum_est > results$sum_true) # 0.75 of estimates are over-estimates
+mean(results$sum_est > results$sum_true) # 0.58 of estimates are over-estimates
