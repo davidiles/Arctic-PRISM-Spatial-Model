@@ -469,7 +469,7 @@ mean(results$sum_lcl < results$sum_true & results$sum_ucl > results$sum_true) # 
 subset(results, results$sum_lcl > results$sum_true | results$sum_ucl < results$sum_true)
 
 # Bias
-exp(mean(log(results$sum_est) - log(results$sum_true))) # 7%
+exp(mean(log(results$sum_est) - log(results$sum_true))) # 1.037 (so about 4% bias)
 
 # Proportion of over and under-estimates
-mean(results$sum_est > results$sum_true) # 0.58 of estimates are over-estimates
+mean(results$sum_est > results$sum_true) # 0.56 of estimates are over-estimates
