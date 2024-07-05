@@ -30,124 +30,101 @@ setwd("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spa
 
 `%!in%` <- Negate(`%in%`)
 
-# ****************************************************************
-# ****************************************************************
-# Load data
-# ****************************************************************
-# ****************************************************************
-
-# -----------------------------------------------------
-# Load BCR Shapefile
-# -----------------------------------------------------
-
-arctic_proj <- "+proj=lcc +lat_0=79 +lon_0=-101 +lat_1=80 +lat_2=77 +x_0=29500000 +y_0=3500000 +ellps=GRS80 +units=km +no_defs "
-
-#load BCR boundaries
-study_region <- read_sf("../data/Spatial_Covariates/BCR/BCR_Terrestrial_master.shp") %>%
-  filter(COUNTRY %in% c("CANADA","USA")) %>%
-  st_transform(crs = arctic_proj) %>%
-  subset(WATER == 3)
-
-study_region$BCR_PROV <- paste0(study_region$PROVINCE_S,"_",study_region$BCR) %>% as.factor()
-
-# -----------------------------------------------------
-# Load species counts at each survey location (count data)
-# -----------------------------------------------------
-
-rawdat <- survey_data <- read.csv("../data/fromChristine/PRISM files for Dave/PRISM_Contacts_and_Survey_Counts_20220110.csv")
-
-# -----------------------------------------------------
-# Load survey locations
-# -----------------------------------------------------
-
-# Location information
-survey_locations <- read.csv("../data/fromChristine/PRISM files for Dave/PRISM_Plot_Coordinates_20220110.csv")
-
-survey_coords <- survey_locations %>%
-  subset(Coordinate_Type %in% c("NW Corner","NE Corner","SE Corner","SW Corner")) %>%
-  group_by(PlotID) %>%
-  summarize(lat = mean(LL_Coordinate1,na.rm = TRUE),
-            lon = mean(LL_Coordinate2,na.rm = TRUE)) %>%
-  na.omit() %>%
-  st_as_sf(coords = c("lon", "lat"),crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0") %>%
-  st_transform(arctic_proj)
-
-surveys <- unique(na.omit(survey_data[,c("PlotID","Plot_type","Survey_Method","Year","Month","Day","Plot_Area_km2","Proportion_Surveyed")]))
-surveys <- left_join(survey_coords,surveys) %>% na.omit() # Drops surveys that have no location information
-
-# BCR/PROV at each location
-surveys <- st_intersection(surveys,study_region)
-
-# Remove strata that have fewer than 10 surveys
-n_surveys_per_stratum <- table(surveys$BCR_PROV)
-strata_to_keep <- n_surveys_per_stratum[n_surveys_per_stratum>=10]
-
-surveys <- subset(surveys, BCR_PROV %in% names(strata_to_keep))
-study_region <- subset(study_region, BCR_PROV %in% names(strata_to_keep))
-study_region$BCR_PROV <- factor(study_region$BCR_PROV, levels = unique(study_region$BCR_PROV))
-surveys$BCR_PROV <- factor(surveys$BCR_PROV, levels = unique(study_region$BCR_PROV))
-surveys$Year <- factor(surveys$Year, levels = seq(min(surveys$Year),max(surveys$Year)))
-
-study_region_outline <- st_union(study_region)
-
-# ****************************************************************
-# ****************************************************************
-# Exploratory analyses
-# ****************************************************************
-# ****************************************************************
-
-# -----------------------------------------------------
-# Plot survey locations
-# -----------------------------------------------------
-
-bbox <- st_bbox(study_region) %>% st_as_sfc()
-xlim <- range(as.data.frame(st_coordinates(bbox))$X)
-ylim <- range(as.data.frame(st_coordinates(bbox))$Y)
-
-map1 <- ggplot()+
-
-  geom_sf(data=study_region,colour="gray80", fill = "transparent")+
-  geom_sf(data=surveys,size = 1)+
-
-  coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
-
-  annotation_scale(style = "ticks",
-                   text_face = "bold")+
-
-  annotation_north_arrow(which_north = "true",
-                         location = "tr",
-                         pad_x = unit(0.25, "cm"), pad_y = unit(0.25, "cm"),
-                         height = unit(1, "cm"),
-                         width = unit(1, "cm"),
-                         style = north_arrow_fancy_orienteering(text_col = 'black',
-                                                                line_col = 'gray20',
-                                                                text_face = "bold",
-                                                                fill = 'gray80'))+
-
-  theme_bw()+
-
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
-  scale_fill_gradient(low = 'white', high = 'red', na.value=NA, name = "incl. prob.")+
-  ggtitle("Survey locations")
-
-map1
-
-png("../output/PRISM_survey_locations.png", height=4, width=6, units="in", res = 600)
-print(map1)
-dev.off()
+# # ****************************************************************
+# # ****************************************************************
+# # Load data
+# # ****************************************************************
+# # ****************************************************************
 # 
 # # -----------------------------------------------------
-# # Evaluate survey intensity through time
+# # Load BCR Shapefile
 # # -----------------------------------------------------
 # 
-# map2 <- ggplot()+
+# arctic_proj <- "+proj=lcc +lat_0=79 +lon_0=-101 +lat_1=80 +lat_2=77 +x_0=29500000 +y_0=3500000 +ellps=GRS80 +units=km +no_defs "
+# 
+# #load BCR boundaries
+# study_region <- read_sf("../data/Spatial_Covariates/BCR/BCR_Terrestrial_master.shp") %>%
+#   filter(COUNTRY %in% c("CANADA","USA")) %>%
+#   st_transform(crs = arctic_proj) %>%
+#   subset(WATER == 3)
+# 
+# study_region$BCR_PROV <- paste0(study_region$PROVINCE_S,"_",study_region$BCR) %>% as.factor()
+# 
+# # -----------------------------------------------------
+# # Load species counts at each survey location (count data)
+# # -----------------------------------------------------
+# 
+# rawdat <- survey_data <- read.csv("../data/fromChristine/PRISM files for Dave/PRISM_Contacts_and_Survey_Counts_20220110.csv")
+# 
+# # -----------------------------------------------------
+# # Load survey locations
+# # -----------------------------------------------------
+# 
+# # Location information
+# survey_locations <- read.csv("../data/fromChristine/PRISM files for Dave/PRISM_Plot_Coordinates_20220110.csv")
+# 
+# survey_coords <- survey_locations %>%
+#   subset(Coordinate_Type %in% c("NW Corner","NE Corner","SE Corner","SW Corner")) %>%
+#   group_by(PlotID) %>%
+#   summarize(lat = mean(LL_Coordinate1,na.rm = TRUE),
+#             lon = mean(LL_Coordinate2,na.rm = TRUE)) %>%
+#   na.omit() %>%
+#   st_as_sf(coords = c("lon", "lat"),crs = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0") %>%
+#   st_transform(arctic_proj)
+# 
+# surveys <- unique(na.omit(survey_data[,c("PlotID","Plot_type","Survey_Method","Year","Month","Day","Plot_Area_km2","Proportion_Surveyed")]))
+# surveys <- left_join(survey_coords,surveys) %>% na.omit() # Drops surveys that have no location information
+# 
+# # BCR/PROV at each location
+# surveys <- st_intersection(surveys,study_region)
+# 
+# # Remove strata that have fewer than 10 surveys
+# n_surveys_per_stratum <- table(surveys$BCR_PROV)
+# 
+# # Create concave hull around points, with 100 km buffer
+# hull <- st_concave_hull(st_union(surveys), ratio = 0.5) %>% st_buffer(100)
+# 
+# # Create study region
+# study_region <- st_intersection(study_region, hull)
+# study_region$BCR_PROV <- factor(study_region$BCR_PROV, levels = unique(study_region$BCR_PROV))
+# surveys$BCR_PROV <- factor(surveys$BCR_PROV, levels = unique(study_region$BCR_PROV))
+# surveys$Year <- factor(surveys$Year, levels = seq(min(surveys$Year),max(surveys$Year)))
+# 
+# study_region_outline <- st_union(study_region)
+# 
+# # ****************************************************************
+# # ****************************************************************
+# # Exploratory analyses
+# # ****************************************************************
+# # ****************************************************************
+# 
+# # -----------------------------------------------------
+# # Plot survey locations
+# # -----------------------------------------------------
+# 
+# bbox <- st_bbox(study_region) %>% st_as_sfc()
+# xlim <- range(as.data.frame(st_coordinates(bbox))$X)
+# ylim <- range(as.data.frame(st_coordinates(bbox))$Y)
+# 
+# map1 <- ggplot()+
 # 
 #   geom_sf(data=study_region,colour="gray80", fill = "transparent")+
 #   geom_sf(data=surveys,size = 1)+
-# 
+#   
 #   coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
+# 
+#   annotation_scale(style = "ticks",
+#                    text_face = "bold")+
+# 
+#   annotation_north_arrow(which_north = "true",
+#                          location = "tr",
+#                          pad_x = unit(0.25, "cm"), pad_y = unit(0.25, "cm"),
+#                          height = unit(1, "cm"),
+#                          width = unit(1, "cm"),
+#                          style = north_arrow_fancy_orienteering(text_col = 'black',
+#                                                                 line_col = 'gray20',
+#                                                                 text_face = "bold",
+#                                                                 fill = 'gray80'))+
 # 
 #   theme_bw()+
 # 
@@ -155,39 +132,64 @@ dev.off()
 #         panel.grid.minor = element_blank(),
 #         panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
 #   scale_fill_gradient(low = 'white', high = 'red', na.value=NA, name = "incl. prob.")+
-#   facet_wrap(Year~., drop = FALSE)+
 #   ggtitle("Survey locations")
 # 
-# map2
+# map1
 # 
-# png("../output/PRISM_survey_locations_year.png", height=12, width=12, units="in", res = 600)
-# print(map2)
+# png("../output/PRISM_survey_locations.png", height=4, width=6, units="in", res = 600)
+# print(map1)
 # dev.off()
 # 
 # # # -----------------------------------------------------
-# # # How many sites were visited more than once?
+# # # Evaluate survey intensity through time
 # # # -----------------------------------------------------
-# #
-# # nsurveys <- surveys$PlotID %>% table() %>% sort(decreasing = TRUE)
-# # sum(nsurveys>1) # 239 plots surveyed more than once
-# #
-# # map3 <- ggplot()+
-# #
+# # 
+# # map2 <- ggplot()+
+# # 
 # #   geom_sf(data=study_region,colour="gray80", fill = "transparent")+
-# #   geom_sf(data=subset(surveys, PlotID %in% names(nsurveys[nsurveys>1])),size = 1)+
-# #
+# #   geom_sf(data=surveys,size = 1)+
+# # 
 # #   coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
-# #
+# # 
 # #   theme_bw()+
-# #
+# # 
 # #   theme(panel.grid.major = element_blank(),
 # #         panel.grid.minor = element_blank(),
 # #         panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
 # #   scale_fill_gradient(low = 'white', high = 'red', na.value=NA, name = "incl. prob.")+
-# #   ggtitle("Plots that have been surveyed more than once")
-# #
-# # map3
-# 
+# #   facet_wrap(Year~., drop = FALSE)+
+# #   ggtitle("Survey locations")
+# # 
+# # map2
+# # 
+# # png("../output/PRISM_survey_locations_year.png", height=12, width=12, units="in", res = 600)
+# # print(map2)
+# # dev.off()
+# # 
+# # # # -----------------------------------------------------
+# # # # How many sites were visited more than once?
+# # # # -----------------------------------------------------
+# # #
+# # # nsurveys <- surveys$PlotID %>% table() %>% sort(decreasing = TRUE)
+# # # sum(nsurveys>1) # 239 plots surveyed more than once
+# # #
+# # # map3 <- ggplot()+
+# # #
+# # #   geom_sf(data=study_region,colour="gray80", fill = "transparent")+
+# # #   geom_sf(data=subset(surveys, PlotID %in% names(nsurveys[nsurveys>1])),size = 1)+
+# # #
+# # #   coord_sf(xlim = xlim, ylim = ylim, crs = arctic_proj)+
+# # #
+# # #   theme_bw()+
+# # #
+# # #   theme(panel.grid.major = element_blank(),
+# # #         panel.grid.minor = element_blank(),
+# # #         panel.border = element_rect(colour = "black", fill=NA, linewidth = 1))+
+# # #   scale_fill_gradient(low = 'white', high = 'red', na.value=NA, name = "incl. prob.")+
+# # #   ggtitle("Plots that have been surveyed more than once")
+# # #
+# # # map3
+# # 
 # # -----------------------------------------------------
 # # Prepare matrix object containing species counts associated with each survey
 # # -----------------------------------------------------
@@ -304,7 +306,7 @@ dev.off()
 # }
 # 
 # # -----------------------------------------------------
-# # Prepare sampling frame
+# # Prepare sampling frame (area to which predictions will be applied)
 # # -----------------------------------------------------
 # 
 # # Create sampling frame
@@ -413,7 +415,7 @@ dev.off()
 # pca            # Variable loadings
 # 
 # fviz_pca_var(pca,
-#              axes = c(1,2),
+#              axes = c(2,3),
 #              col.var = "contrib", # Color by contributions to the PC
 #              gradient.cols = viridis(10),
 #              repel = TRUE     # Avoid text overlapping
@@ -503,7 +505,7 @@ dev.off()
 #     x = triCenters.xy[triBarrier, 1],
 #     y = triCenters.xy[triBarrier, 2]))
 # 
-#save.image("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spatial-Model/output/PRISM_wksp.RData")
+# save.image("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spatial-Model/output/PRISM_wksp.RData")
 
 load("C:/Users/IlesD/OneDrive - EC-EC/Iles/Projects/Shorebirds/Arctic-PRISM-Spatial-Model/output/PRISM_wksp.RData")
 
@@ -520,7 +522,7 @@ for (species in (species_list)){
   print(species)
   set.seed(111)
   
-  if (file.exists("../output/empirical_results.RDS")) results <- readRDS("../output/empirical_results.RDS")
+  if (file.exists("../output/empirical_results_nbinomial.RDS")) results <- readRDS("../output/empirical_results_nbinomial.RDS")
   if (nrow(results) > 0 & species %in% results$species) next
   sdat <- surveys %>% st_intersection(hexgrid) %>% arrange(Year,Month,Day,PlotID)
   sdat <- sdat %>% mutate(count = count_matrix[,species])
@@ -563,7 +565,7 @@ for (species in (species_list)){
                                       constr = TRUE
   )
   
-  pc_prec <- list(prior = "pcprec", param = c(0.1, 0.01))
+  pc_prec <- list(prior = "pcprec", param = c(0.1, 0.1))
   
   sdat$plot_idx <- as.numeric(as.factor(sdat$Plot_Year))
   
@@ -639,7 +641,6 @@ for (species in (species_list)){
   # ****************************************************************************
   
   # Random effect estimates
-  #var_svy <- 1/fit$summary.hyperpar$'0.5quant'[3]
   var_plt <-  1/fit$summary.hyperpar$'0.5quant'[5]
   
   pred <- generate(
@@ -649,8 +650,12 @@ for (species in (species_list)){
       spde_count + 
       PC1_beta1+
       PC2_beta1+
-      PC3_beta1,
-    n.samples = 500)
+      PC3_beta1+
+      PC1_beta2+
+      PC2_beta2+
+      PC3_beta2
+      ,
+    n.samples = 1000)
   
   pred <- exp(pred + 0.5*var_plt)
   
@@ -718,7 +723,7 @@ for (species in (species_list)){
   
   species_maps <- ggarrange(species_plots[[species]],map3,nrow = 2, ncol=1,align = "hv")
   
-  png(paste0("../output/empirical_",species,"_intensive.png"), height=8, width=6, units="in", res = 600)
+  png(paste0("../output/empirical_",species,"_nbinomial.png"), height=8, width=6, units="in", res = 600)
   print(species_maps)
   dev.off()
   
@@ -731,7 +736,7 @@ for (species in (species_list)){
   # --------------------------------
   # Save results
   # --------------------------------
-  if (file.exists("../output/empirical_results.RDS")) results <- readRDS("../output/empirical_results.RDS")
+  if (file.exists("../output/empirical_results_nbinomial")) results <- readRDS("../output/empirical_results_nbinomial")
   
   results <- rbind(results, data.frame(species = species,
                                        species_number = NA,
@@ -751,7 +756,7 @@ for (species in (species_list)){
   results <- results %>% arrange(sum_est)
   results$species_number <- 1:nrow(results)
   
-  saveRDS(results,"../output/empirical_results.RDS")
+  saveRDS(results,"../output/empirical_results_nbinomial.RDS")
   
   # --------------------------------
   # Plot results
@@ -821,7 +826,7 @@ for (species in (species_list)){
 # Comparison to existing PRISM estimates
 # ------------------------------------
 
-results <- readRDS("../output/empirical_results.RDS")
+results <- readRDS("../output/empirical_results_nbinomial.RDS")
 
 oldPrism <- read.csv("../data/fromPaul/prism_estimates_designbased.csv")
 results$species[results$species %!in% oldPrism$Species_Code]
@@ -859,8 +864,8 @@ est_comparison_plot <- ggplot(data = result_comparison)+
   theme_bw()+
   theme(panel.grid.minor = element_blank(),
         panel.grid.major.y = element_blank())+
-  scale_x_continuous(limits=lim,trans="log10")+
-  scale_y_continuous(limits=lim,trans="log10")+
+  scale_x_continuous(limits=lim,trans="log10", labels = comma)+
+  scale_y_continuous(limits=lim,trans="log10", labels = comma)+
   
   ylab("Bayesian")+
   xlab("Design-based")+

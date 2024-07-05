@@ -116,14 +116,14 @@ species_list[species_list %!in% species_to_run$common_name]
 results <- data.frame()
 maps <- list()
 
-for (i in 1:nrow(species_to_run)){
+for (i in (1:nrow(species_to_run))){
   
   set.seed(111)
   
   species <- species_to_run[i,]
   print(species$common_name)
   
-  if (file.exists("../output/simulation_results.RDS")) results <- readRDS("../output/simulation_results.RDS")
+  if (file.exists("../output/simulation_results_nbinomial.RDS")) results <- readRDS("../output/simulation_results_nbinomial.RDS")
   if (nrow(results) > 0 & species$common_name %in% results$common_name) next
   
   # -----------------------------------------------------
@@ -152,18 +152,15 @@ for (i in 1:nrow(species_to_run)){
   sdat <- surveys
   sdat$true <- extract(ebirdSDM,vect(sdat %>% st_transform(crs(ebirdSDM))))[,2]
   sdat$log_offset <- log(sdat$Proportion_Surveyed * sdat$Plot_Area_km2)
-  sdat <- subset(sdat,Proportion_Surveyed >0.5)
+  sdat <- subset(sdat,Proportion_Surveyed > 0.5)
   sdat$Plot_Year <- paste0(sdat$PlotID,"-",sdat$Year) %>% as.factor() %>% as.numeric()
   
-  plot_effects <- rnorm(max(sdat$Plot_Year),0,0.2)
-  
-  sdat$count <- rpois(nrow(sdat),
-                      lambda = sdat$true * sdat$Plot_Area_km2 * sdat$Proportion_Surveyed * exp(plot_effects[sdat$Plot_Year]))
+  sdat$count <- rpois(nrow(sdat),lambda = sdat$true * sdat$Plot_Area_km2 * sdat$Proportion_Surveyed)
   sdat$present <- as.numeric(sdat$count > 0)
   
   range(sdat$count)
   
-  # If the species was detected in fewer than 10% of plots, skip it
+  # If the species was detected in fewer than 50 of plots, skip it
   nplots <- sdat %>% 
     as.data.frame() %>%
     group_by(PlotID) %>%
@@ -192,14 +189,15 @@ for (i in 1:nrow(species_to_run)){
                                       constr = TRUE
   )
   
-  pc_prec <- list(prior = "pcprec", param = c(0.1, 0.1))
+  pc_prec <- list(prior = "pcprec", param = c(0.1, 0.01))
   
   sdat$plot_idx <- as.numeric(as.factor(sdat$Plot_Year))
   
   comps <- ~
     spde_count(geometry, model = matern_count) +
     intercept_rapid(rep(1, nrow(.data.))) +
-    intensive(rep(1, nrow(.data.)), mean.linear = 0, prec.linear = 16) +
+    ropedrag_effect(rep(1, nrow(.data.)), mean.linear = 0, prec.linear = 16) +
+    intensive_effect(rep(1, nrow(.data.)), mean.linear = 0, prec.linear = 16) +
     plot(plot_idx, model = "iid", constr = TRUE, hyper = list(prec = pc_prec))+
     PC1_beta1(PC1, model = "linear", mean.linear = 0, prec.linear = 100)+
     PC1_beta2(PC1^2, model = "linear", mean.linear = 0, prec.linear = 100)+
@@ -234,7 +232,24 @@ for (i in 1:nrow(species_to_run)){
     
     formula = count ~ 
       intercept_rapid +
-      intensive +
+      intensive_effect +
+      spde_count + 
+      plot + 
+      log_offset +
+      PC1_beta1+
+      PC2_beta1+
+      PC3_beta1+
+      PC1_beta2+
+      PC2_beta2+
+      PC3_beta2)
+  
+  like_ropedrag <- like(
+    family = "poisson",
+    data = subset(sdat, Survey_Method == "rope drag"),
+    
+    formula = count ~ 
+      intercept_rapid +
+      ropedrag_effect +
       spde_count + 
       plot + 
       log_offset +
@@ -249,6 +264,7 @@ for (i in 1:nrow(species_to_run)){
     comps,
     like_rapid,
     like_intensive,
+    like_ropedrag,
     options = list(bru_verbose = 4)
   )
   
@@ -268,7 +284,7 @@ for (i in 1:nrow(species_to_run)){
   # ****************************************************************************
   
   # Random effect estimates
-  var_plt <-  1/fit$summary.hyperpar$'0.5quant'[3]
+  var_plt <-  1/fit$summary.hyperpar$'0.5quant'[5]
   
   pred <- generate(
     fit,
@@ -277,7 +293,10 @@ for (i in 1:nrow(species_to_run)){
       spde_count + 
       PC1_beta1+
       PC2_beta1+
-      PC3_beta1,
+      PC3_beta1+
+      PC1_beta2+
+      PC2_beta2+
+      PC3_beta2,
     n.samples = 2000)
   
   pred <- exp(pred + 0.5*var_plt)
@@ -324,7 +343,7 @@ for (i in 1:nrow(species_to_run)){
                         label = comma)+
     ggtitle("Simulated density (count / km^2)")
   
-  map2
+  #map2
   
   # ------------------------------
   # Median predictions
@@ -362,7 +381,7 @@ for (i in 1:nrow(species_to_run)){
                         limits = lim)+
     ggtitle(paste0(species$common_name," - expected count per km^2"))
   
-  map3
+  #map3
   
   # -----------------------------------------------------
   # Estimate of sum across sampling frame
@@ -393,7 +412,7 @@ for (i in 1:nrow(species_to_run)){
   
   species_maps <- ggarrange(map2,map3,estimate_posterior,nrow = 3, ncol=1,align = "hv")
   
-  png(paste0("../output/simulation_",species$common_name,".png"), height=9, width=4, units="in", res = 600)
+  png(paste0("../output/simulation_",species$common_name,"_nbinomial.png"), height=9, width=4, units="in", res = 600)
   print(species_maps)
   dev.off()
   
@@ -406,7 +425,7 @@ for (i in 1:nrow(species_to_run)){
   # --------------------------------
   # Save results
   # --------------------------------
-  if (file.exists("../output/simulation_results.RDS")) results <- readRDS("../output/simulation_results.RDS")
+  if (file.exists("../output/simulation_results_nbinomial.RDS")) results <- readRDS("../output/simulation_results_nbinomial.RDS")
   
   results <- rbind(results, data.frame(common_name = species$common_name,
                                        species_code = species$species_code,
@@ -422,7 +441,7 @@ for (i in 1:nrow(species_to_run)){
   results <- results %>% arrange(sum_true)
   results$species_number <- 1:nrow(results)
   
-  saveRDS(results,"../output/simulation_results.RDS")
+  saveRDS(results,"../output/simulation_results_nbinomial.RDS")
   
   # --------------------------------
   # Plot results
@@ -451,16 +470,15 @@ for (i in 1:nrow(species_to_run)){
   
 }
 
-png("../output/simulation_species_estimates.png", height=6, width=8, units="in", res = 600)
+png("../output/simulation_species_estimates_nbinomial.png", height=6, width=8, units="in", res = 600)
 print(result_plot)
 dev.off()
 
-
 # Credible interval coverage
-mean(results$sum_lcl < results$sum_true & results$sum_ucl > results$sum_true) # 0.82
+mean(results$sum_lcl < results$sum_true & results$sum_ucl > results$sum_true) # 0.75
 
 # Bias
-exp(mean(log(results$sum_est) - log(results$sum_true))) # 1.076; about 8%
+exp(mean(log(results$sum_est) - log(results$sum_true))) # 1.15
 
 # Proportion of over and under-estimates
-mean(results$sum_est > results$sum_true) # 0.64 of estimates are over-estimates
+mean(results$sum_est > results$sum_true) # 0.75 of estimates are over-estimates
