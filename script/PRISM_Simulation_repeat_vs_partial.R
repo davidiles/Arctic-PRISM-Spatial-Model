@@ -659,6 +659,7 @@ ggplot() +
   geom_bar(data = result_summary, aes(x = "Partial Repeat", y = mean_CI_N1_partial), stat = "identity")+
   
   facet_grid(common_name~sd_field, scales = "free")+
+  ylab("Width of 90% CI")+
   xlab("")+
   theme_bw()
 
