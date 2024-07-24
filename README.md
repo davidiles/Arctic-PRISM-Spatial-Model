@@ -13,9 +13,9 @@
 The Bayesian model has several key features, but most of these can be changed/adjusted easily:
 
 - Negative binomial or overdispersed Poisson error
-|     - Can also include zero-inflation if necessary
+    - Can also include zero-inflation if necessary
 - Spatial autocorrelation process
-|     - Modeled using a Matern covariance structure / Gaussian Markov random field (widely used, easily implemented, spatially continuous)
+    - Modeled using a Matern covariance structure / Gaussian Markov random field (widely used, easily implemented, spatially continuous)
 - Plot-level random effects (to account for the fact that many plots are repeatedly surveyed)
 - Survey-level random effect (to account for overdispersion)
 - Habitat covariates (extracted from relevant raster layers)
