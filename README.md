@@ -34,40 +34,30 @@ The approach entails several steps:
 2) Sample from the "true" rasters at existing PRISM survey locations.  These represent the observed data.  Also include some degree of observation error.
 3) Analyze simulated data using Bayesian model and design-based approach.  Evaluate bias in estimates and credible interval coverage.  Repeat this for many species.
 
-- Script "PRISM_1_Simulation.R" conducts simulations, confirms that confidence intervals are appropriate (95% credible intervals contain the true population total for 95% of species).  Bias is minimal.
+- Script "PRISM_Simulation.R" conducts simulations for 46 species.  Results for each species are contained in the [output sub-folder](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/tree/main/output). 
+- [An example of a simulation for Horned Lark can be found here](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/simulation_Horned%20Lark_nbinomial.png).
+- [Summary of results across 46 species can be viewed here](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/simulation_species_estimates_nbinomial.png).
+
+For estimates of overall population size, credible interval coverage is slightly lower than nominal.  The 90% credible interval contains the true population total for *76%* of species.
+On average, bias in total population size is about 4% (so very small).  56% of species have estimates that are negatively biased, which is excellent (a perfect estimator would underestimate 50% of the time).
+
+- need to replicate this analysis using the design-based approach.
 
 ## Empirical analysis
 
-Currently fitting simple model for each species.  Data is from rapid surveys.
+I applied the Bayesian model to empirical data for as many species as possible.  Results are contained in the [output sub-folder](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/tree/main/output), where .
 
-
-
-Model output:
-- Maps of relative density
-- Estimates of total abundance
-
+An example of model results for SESA is shown below:
 ![SESA](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/empirical_SESA_nbinomial.png)
 
-Estimates of population size from Bayesian analysis (blue), compared to estimates reported in Smith et al.'s design-based analysis.
-![Population estimates](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/species_estimates.png)
+Across all species for which I fit models, here is a comparison of estimated population sizes (whiskers are 90% credible intervals).  Black dots are the point estimates from the design-based analysis reported in Paul Smith's document.
 
-*Note: Also eventually analyze the same data using design-based analysis* 
+![Population estimates](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/species_estimates.png)
 
 ## Issues / Ideas
 
-1) Currently only using Rapid Surveys, and removing all observations outside plot.
- - Include Intensive Surveys in same analysis (improve precision?).  Set prior of "intensive survey effect" to 1.13 as per Paul's previous analysis (mean across species), but only fit effect for each species separately.
- - Reconnaissance surveys on spaghetti transects - do we have an effort measurement to associate with these?  If so, can include in analysis.
+1) Reconnaissance surveys on spaghetti transects - do we have an effort measurement to associate with these?  If so, can include in analysis.
  
-
-2) Need to use same covariate definitions as in Paul's original analysis, along with same strata that were used to select survey locations.
+2) Need to obtain covariate layers that are appropriate for Arctic Canada.  Currently using a sub-optimal covariate layer (land cover of Canada 2020).  Ideally, we should start by using identical covariate definitions and stratum categories as in the original PRISM design.
 
 3) Precision of Bayesian estimates is generally lower (and largely uncorrelated) with precision reported in Smith et al.'s design-based analysis.  Need to confirm that design-based precision is accurate (through simulation), and ensure same data and covariates/strata are being used.
-
-4) Evaluate change analysis through simulation.  Start by assuming same plots are revisited.  2 levels of spatial autocorrelation in change pattern (highly patchy vs highly continuous).  For each simulation scenario, evaluate correlation (x-y plot) between true change and estimate change of overall population.
-
-5) Random year effects?  These will be confounded with space, but may be somewhat (?) estimable since many sites have been visited twice?  Or perhaps use 5-year windows?
-
-
-
-- No LESA detected in intensive plots?
