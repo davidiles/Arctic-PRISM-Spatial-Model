@@ -38,14 +38,14 @@ The approach entails several steps:
 - [An example of a simulation for Horned Lark can be found here](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/simulation_Horned%20Lark_nbinomial.png).
 - [Summary of results across 46 species can be viewed here](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/simulation_species_estimates_nbinomial.png).
 
-For estimates of overall population size, credible interval coverage is slightly lower than nominal.  The 90% credible interval contains the true population total for *76%* of species.
+For estimates of overall population size, credible interval coverage is slightly lower than nominal.  The 90% credible interval contains the true population total for **76%** of species.
 On average, bias in total population size is about 4% (so very small).  56% of species have estimates that are negatively biased, which is excellent (a perfect estimator would underestimate 50% of the time).
 
 - need to replicate this analysis using the design-based approach.
 
 ## Empirical analysis
 
-I applied the Bayesian model to empirical data for as many species as possible.  Results are contained in the [output sub-folder](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/tree/main/output), where .
+I applied the Bayesian model to empirical data for as many species as possible.  Results are contained in the [output sub-folder](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/tree/main/output).
 
 An example of model results for SESA is shown below:
 ![SESA](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/empirical_SESA_nbinomial.png)
