@@ -56,8 +56,11 @@ Across all species for which I fit models, here is a comparison of estimated pop
 
 ## Issues / Ideas
 
-1) Reconnaissance surveys on spaghetti transects - do we have an effort measurement to associate with these?  If so, can include in analysis.
- 
+1) Need to obtain the original sampling frame (grid across the survey area). Currently, I am fitting the model to an eye-balled portion of BCR 3, which means I am probably predicting into areas that were not part of the original design.  This would reduce precision of the estimates (and also result in over-estimated population size, compared to a design-based analysis of a smaller subset of the region).
+
 2) Need to obtain covariate layers that are appropriate for Arctic Canada.  Currently using a sub-optimal covariate layer (land cover of Canada 2020).  Ideally, we should start by using identical covariate definitions and stratum categories as in the original PRISM design.
 
 3) Precision of Bayesian estimates is generally lower (and largely uncorrelated) with precision reported in Smith et al.'s design-based analysis.  Need to confirm that design-based precision is accurate (through simulation), and ensure same data and covariates/strata are being used.
+
+4) Reconnaissance surveys on spaghetti transects - do we have an effort measurement to associate with these?  If so, can include in analysis.  Can also consider integrating additional sources of information, if any exist (e.g., from eBird?).  However, this is a rabbit hole that would need to be carefully considered, so likely want to avoid this in the near-term.
+ 
