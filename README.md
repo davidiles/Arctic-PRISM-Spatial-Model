@@ -1,6 +1,6 @@
 # Arctic PRISM Spatial Model
 
- First draft of a Bayesian spatial analysis of shorebird abundance for Arctic PRISM.  Goal is to develop a compare design-based analysis to model-based analysis.
+ First draft of a Bayesian spatial analysis of shorebird abundance for Arctic PRISM.  Goal is to develop a develop a model-based analysis of shorebird density (and change over time), confirm it works as intended through spatially explicit simulations, apply the model to empirical data, and compare to design-based analysis.
  
  
 ## Survey locations
