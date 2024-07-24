@@ -27,11 +27,12 @@ Models will be fit using Bayesian methods, [using INLA](https://www.r-inla.org/)
 
 ## Simulation
 
-The first step of this analysis is to conduct 
+The first step of this analysis is to conduct simulations to confirm the Bayesian model (and if possible, the design-based analysis) produces unbiased estimates with appropriate credible interval coverage (i.e., the true population total should be within the 90% credible interval for 90% of simulations).
 
-- Use eBird species distribution rasters as "truth" and sample from those rasters at existing PRISM survey locations.
-
-- Analyze simulated data using Bayesian model.  
+The approach entails several steps:
+1) Download eBird species distribution rasters to use as "truth" in simulations.  These are just used as examples of how species *might be* distributed, and we want to confirm that if the species is distributed in *any* manner, the model can accurately estimate the spatial pattern of abundance as well as the total abundance (i.e., the sum of all pixels)
+2) Sample from the "true" rasters at existing PRISM survey locations.  These represent the observed data.  Also include some degree of observation error.
+3) Analyze simulated data using Bayesian model and design-based approach.  Evaluate bias in estimates and credible interval coverage.  Repeat this for many species.
 
 - Script "PRISM_1_Simulation.R" conducts simulations, confirms that confidence intervals are appropriate (95% credible intervals contain the true population total for 95% of species).  Bias is minimal.
 
