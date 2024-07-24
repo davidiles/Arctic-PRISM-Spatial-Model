@@ -1,13 +1,33 @@
 # Arctic PRISM Spatial Model
 
- Bayesian spatial analysis of shorebird abundance for Arctic PRISM.  Goal is to compare design-based analysis to model-based analysis.
+ First draft of a Bayesian spatial analysis of shorebird abundance for Arctic PRISM.  Goal is to develop a compare design-based analysis to model-based analysis.
  
  
 ## Survey locations
 
 ![PRISM survey locations](https://github.com/davidiles/Arctic-PRISM-Spatial-Model/blob/main/output/PRISM_survey_locations.png)
  
+ 
+## Proposed model structure
+
+The Bayesian model has several key features, but most of these can be changed/adjusted easily:
+
+- Negative binomial or overdispersed Poisson error
+|     - Can also include zero-inflation if necessary
+- Spatial autocorrelation process
+|     - Modeled using a Matern covariance structure / Gaussian Markov random field (widely used, easily implemented, spatially continuous)
+- Plot-level random effects (to account for the fact that many plots are repeatedly surveyed)
+- Survey-level random effect (to account for overdispersion)
+- Habitat covariates (extracted from relevant raster layers)
+- PRISM strata can be included as discrete covariates
+- Integrated analysis of "rapid surveys" and "intensive plots" which allows for detectability corrections to be embedded in the model and uncertainty to be propagated
+- Informative priors where required to help constrain estimates, improve precision, improve parameter identifiability, etc
+
+Models will be fit using Bayesian methods, [using INLA](https://www.r-inla.org/)
+
 ## Simulation
+
+The first step of this analysis is to conduct 
 
 - Use eBird species distribution rasters as "truth" and sample from those rasters at existing PRISM survey locations.
 
@@ -19,12 +39,7 @@
 
 Currently fitting simple model for each species.  Data is from rapid surveys.
 
-Model structure:
-- Poisson error
-- Gaussian random field for spatial autocorrelation
-- Plot-level random effect (several plots were surveyed multiple times)
-- Survey-level random effect (to account for overdispersion)
-- Habitat covariates (proportion of landscape within 5 km of survey comprised by different land cover classes from LCC2020)
+
 
 Model output:
 - Maps of relative density
